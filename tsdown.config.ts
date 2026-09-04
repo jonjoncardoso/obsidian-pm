@@ -12,7 +12,7 @@ export default defineConfig({
   outDir,
   platform: 'node',
   dts: false,
-  minify: prod,
+  minify: false,
   sourcemap: prod ? false : 'inline',
   clean: false,
   hash: false,
