@@ -310,6 +310,16 @@ export class ProjectStore implements TaskSource {
     rebuildTaskIndex(live)
     if (this.hydratedBodies.has(fresh)) this.hydratedBodies.add(live)
     else this.hydratedBodies.delete(live)
+
+    // Re-apply persisted collapse state after reload (cold-start does this
+    // via plugin.applyCollapsedState; the reload path was missing it).
+    const collapsedIds = this.getSettings().collapsedTasks[live.filePath]
+    if (collapsedIds) {
+      const set = new Set(collapsedIds)
+      for (const { task } of flattenTasks(live.tasks)) {
+        task.collapsed = set.has(task.id)
+      }
+    }
   }
 
   /** Serialize work on one project: saves and reloads never interleave. */
