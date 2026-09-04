@@ -81,7 +81,7 @@ export function mapRawToTask(r: Record<string, unknown>, overrides?: Partial<Tas
   return makeTask({
     id: r.id as string,
     title: (r.title as string) ?? 'Untitled',
-    description: (r.description as string) ?? '',
+    description: typeof r.description === 'string' ? r.description : '',
     type: (r.type as string) === 'milestone' ? 'milestone' : (r.type as string) === 'subtask' ? 'subtask' : 'task',
     status: (r.status as Task['status']) ?? 'todo',
     priority: (r.priority as Task['priority']) ?? 'medium',
@@ -147,7 +147,7 @@ export function hydrateProjectFromFrontmatter(
   return {
     id: (frontmatter.id as string) ?? basename,
     title: (frontmatter.title as string) ?? basename,
-    description: (frontmatter.description as string) ?? body.trim(),
+    description: typeof frontmatter.description === 'string' ? frontmatter.description : '',
     color: (frontmatter.color as string) ?? '#8b72be',
     icon: (frontmatter.icon as string) ?? '\u{1F4CB}',
     tasks: [],
