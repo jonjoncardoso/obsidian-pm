@@ -207,3 +207,10 @@
   color: var(--text-muted);
   margin-right: 6px;
 }
+
+.pm-project-row--complete {
+  opacity: 0.45;
+}
+.pm-project-row--complete .pm-task-title-text {
+  color: var(--text-muted);
+}

@@ -38,6 +38,9 @@ export class ProjectRow {
 
   constructor(tbody: HTMLElement, props: ProjectRowProps) {
     this.el = tbody.createEl('tr', { cls: 'pm-table-row pm-project-row' })
+    if (props.tasksTotal > 0 && props.tasksDone === props.tasksTotal) {
+      this.el.addClass('pm-project-row--complete')
+    }
     this.el.style.setProperty('--depth', String(props.depth))
 
     const expand = this.el.createEl('td', { cls: 'pm-table-cell-expand' })
