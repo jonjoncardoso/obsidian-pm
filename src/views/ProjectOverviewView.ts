@@ -124,7 +124,8 @@ export class ProjectOverviewView extends ItemView {
     const tasks = flattenTasks(project.tasks)
       .map((entry) => entry.task)
       .filter((task) => !task.archived)
-    const rollup = summarize(tasks, config)
+    const ownRollup = summarize(tasks, config)
+    const rollup = this.rollupWithDescendants(project, ownRollup)
 
     this.renderBreadcrumbs(project)
     this.renderHeader(project, rollup)
@@ -138,6 +139,27 @@ export class ProjectOverviewView extends ItemView {
     this.renderSubProjects(main, project)
     this.renderTasks(main, project, rollup)
     this.renderProperties(side, project, tasks, rollup)
+  }
+
+  /**
+   * ownRollup plus, when the project has sub-projects, their rolled-up counts, due
+   * dates, and hours from the vault index. Falls back to ownRollup alone if the
+   * project has no matching index entry (should not happen once the index is built).
+   */
+  private rollupWithDescendants(project: Project, ownRollup: Rollup): Rollup {
+    const ref = this.plugin.index.projectRef(project.filePath)
+    if (!ref || this.plugin.index.childRefs(project.filePath).length === 0) return ownRollup
+    const counts = this.plugin.index.rollupCounts(ref)
+    const due = this.plugin.index.rollupDueSummary(ref)
+    const hours = this.plugin.index.rollupHours(ref)
+    return {
+      total: counts.total,
+      done: counts.done,
+      overdue: due.overdue,
+      latestDue: due.latestDue,
+      estimate: Math.round(hours.estimate * 10) / 10,
+      logged: Math.round(hours.logged * 10) / 10
+    }
   }
 
   private signTree(project: Project): string {

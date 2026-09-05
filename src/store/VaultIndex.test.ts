@@ -19,6 +19,21 @@ function taskNote(id: string, title: string, projectId: string, status = 'todo',
   return `---\npm-task: true\nid: ${id}\nprojectId: ${projectId}\ntitle: ${title}\nstatus: ${status}\n${dueLine}---\n\n`
 }
 
+function taskNoteWithHours(
+  id: string,
+  title: string,
+  projectId: string,
+  timeEstimate: number | undefined,
+  loggedHours: number[]
+): string {
+  const estimateLine = timeEstimate === undefined ? '' : `timeEstimate: ${timeEstimate}\n`
+  const logsLines =
+    loggedHours.length === 0
+      ? ''
+      : `timeLogs:\n${loggedHours.map((hours) => `  - date: '2020-01-01'\n    hours: ${hours}\n    note: ''`).join('\n')}\n`
+  return `---\npm-task: true\nid: ${id}\nprojectId: ${projectId}\ntitle: ${title}\nstatus: todo\n${estimateLine}${logsLines}---\n\n`
+}
+
 /** Collects the registrations a Plugin would clean up, so events can be driven in tests. */
 function fakePlugin(): Plugin {
   return { registerEvent: () => undefined } as unknown as Plugin
@@ -238,6 +253,19 @@ describe('VaultIndex', () => {
       const root = expectDefined(index.projectRef('A.md'))
       expect(index.dueSummary(root)).toEqual({ overdue: 1, latestDue: '2020-01-05' })
       expect(index.rollupDueSummary(root)).toEqual({ overdue: 2, latestDue: '2020-03-01' })
+    })
+
+    it('rolls estimated and logged hours up through the subtree', async () => {
+      await vault.create('A.md', projectNote('p1', 'A'))
+      await vault.create('A_tasks/a.md', taskNoteWithHours('t1', 'A1', 'p1', 2, [1, 0.5]))
+      await vault.create('B.md', projectNote('p2', 'B', 'parent: "[[A]]"\n'))
+      await vault.create('B_tasks/b.md', taskNoteWithHours('t2', 'B1', 'p2', 3, []))
+      await vault.create('B_tasks/c.md', taskNoteWithHours('t3', 'B2', 'p2', undefined, [2]))
+      index.build()
+
+      const root = expectDefined(index.projectRef('A.md'))
+      expect(index.hours(root)).toEqual({ estimate: 2, logged: 1.5 })
+      expect(index.rollupHours(root)).toEqual({ estimate: 5, logged: 3.5 })
     })
 
     it('follows a parent link added after the build', async () => {

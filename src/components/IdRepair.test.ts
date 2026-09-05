@@ -27,7 +27,9 @@ function taskRef(id: string, projectPath: string): TaskRef {
     completed: '',
     dependencies: [],
     assignees: [],
-    archived: false
+    archived: false,
+    timeEstimate: undefined,
+    loggedHours: 0
   }
 }
 

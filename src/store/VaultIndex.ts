@@ -42,6 +42,10 @@ export interface TaskRef {
   dependencies: string[]
   assignees: string[]
   archived: boolean
+  /** From frontmatter timeEstimate, in hours. Undefined when the task has none. */
+  timeEstimate: number | undefined
+  /** Sum of frontmatter timeLogs[].hours, in hours. Zero when the task has no logs. */
+  loggedHours: number
 }
 
 function str(raw: unknown, fallback = ''): string {
@@ -69,6 +73,22 @@ function ownStatusesOf(frontmatter: Record<string, unknown>): Partial<StatusConf
 function ownAutoArchiveDays(frontmatter: Record<string, unknown>): number | null {
   const days = projectConfigOf(frontmatter)?.autoArchiveDays
   return typeof days === 'number' && Number.isFinite(days) && days >= 0 ? Math.floor(days) : null
+}
+
+function timeEstimateOf(frontmatter: Record<string, unknown>): number | undefined {
+  const value = frontmatter.timeEstimate
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+function loggedHoursOf(frontmatter: Record<string, unknown>): number {
+  const logs = frontmatter.timeLogs
+  if (!Array.isArray(logs)) return 0
+  let total = 0
+  for (const log of logs) {
+    const hours = (log as { hours?: unknown } | null)?.hours
+    if (typeof hours === 'number' && Number.isFinite(hours)) total += hours
+  }
+  return total
 }
 
 /**
@@ -244,6 +264,28 @@ export class VaultIndex {
       const counts = this.counts(descendant)
       totals.total += counts.total
       totals.done += counts.done
+    }
+    return totals
+  }
+
+  /** Estimated and logged hours for a project's own tasks, not counting sub-projects. */
+  hours(ref: ProjectRef): { estimate: number; logged: number } {
+    let estimate = 0
+    let logged = 0
+    for (const task of this.countableTasks(ref)) {
+      estimate += task.timeEstimate ?? 0
+      logged += task.loggedHours
+    }
+    return { estimate, logged }
+  }
+
+  /** The same across a project and everything under it. */
+  rollupHours(ref: ProjectRef): { estimate: number; logged: number } {
+    const totals = this.hours(ref)
+    for (const descendant of this.descendantRefs(ref.path)) {
+      const hours = this.hours(descendant)
+      totals.estimate += hours.estimate
+      totals.logged += hours.logged
     }
     return totals
   }
@@ -453,7 +495,9 @@ export class VaultIndex {
       completed: str(frontmatter.completed),
       dependencies: stringList(frontmatter.dependencies),
       assignees: stringList(frontmatter.assignees),
-      archived: path.split('/').at(-2) === 'Archive'
+      archived: path.split('/').at(-2) === 'Archive',
+      timeEstimate: timeEstimateOf(frontmatter),
+      loggedHours: loggedHoursOf(frontmatter)
     }
     this.tasks.set(path, ref)
     this.taskById.set(ref.id, ref)
