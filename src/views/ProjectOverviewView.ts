@@ -15,6 +15,7 @@ import { renderMilestoneTimeline, type MilestonePoint } from '../ui/composites/m
 import { renderTagChip } from '../ui/composites/tagChip'
 import { renderTimeChip } from '../ui/composites/timeChip'
 import { renderGlyph } from '../ui/composites/properties'
+import { renderOverviewTasks } from './OverviewTaskTable'
 
 export const PM_PROJECT_OVERVIEW_VIEW_TYPE = 'pm-project-overview'
 
@@ -135,6 +136,7 @@ export class ProjectOverviewView extends ItemView {
     this.renderDescription(main, project)
     this.renderMilestones(main, tasks, config)
     this.renderSubProjects(main, project)
+    this.renderTasks(main, project, rollup)
     this.renderProperties(side, project, tasks, rollup)
   }
 
@@ -303,6 +305,33 @@ export class ProjectOverviewView extends ItemView {
         safeAsync(() => this.plugin.router.openProjectLink(child.path))
       )
     }
+  }
+
+  private renderTasks(parent: HTMLElement, project: Project, rollup: Rollup): void {
+    const children = this.plugin.index.childRefs(project.filePath)
+    let total: number
+    let done: number
+    if (children.length > 0) {
+      const ref = this.plugin.index.projectRef(project.filePath)
+      if (ref) {
+        const counts = this.plugin.index.rollupCounts(ref)
+        total = counts.total
+        done = counts.done
+      } else {
+        total = rollup.total
+        done = rollup.done
+      }
+    } else {
+      total = rollup.total
+      done = rollup.done
+    }
+    const note = total ? `${done} of ${total} done` : ''
+    const section = this.section(parent, 'Tasks', note)
+    if (total === 0) {
+      section.createDiv({ cls: 'pm-overview-muted', text: 'No tasks.' })
+      return
+    }
+    void renderOverviewTasks(section, this.plugin, project)
   }
 
   private renderProperties(parent: HTMLElement, project: Project, tasks: Task[], rollup: Rollup): void {

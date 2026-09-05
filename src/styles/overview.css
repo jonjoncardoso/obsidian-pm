@@ -332,3 +332,80 @@
   font-size: var(--font-ui-smaller);
   color: var(--text-faint);
 }
+
+/* ── Overview task table ── */
+
+.pm-overview-tasks-wrapper {
+  max-height: 480px;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+}
+
+.pm-overview-tasks {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-ui-small);
+}
+
+.pm-overview-tasks thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--background-primary);
+}
+
+.pm-overview-tasks th {
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pm-overview-tasks .pm-table-row {
+  cursor: pointer;
+}
+.pm-overview-tasks .pm-table-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.pm-overview-tasks .pm-table-row td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--background-modifier-border-subtle, var(--background-modifier-border));
+}
+
+.pm-overview-tasks .pm-table-row--done td {
+  opacity: 0.55;
+}
+
+.pm-overview-tasks-group td {
+  padding: 10px 8px 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+.pm-overview-tasks-group:first-child td {
+  padding-top: 6px;
+}
+
+.pm-overview-tasks-group-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pm-overview-tasks-group-icon {
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  --pm-glyph-size: 14px;
+  line-height: 1;
+}
+
+.pm-overview-tasks-group-title {
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+}
