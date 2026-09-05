@@ -409,3 +409,32 @@
   font-size: var(--font-ui-small);
   font-weight: 600;
 }
+
+.pm-overview-tasks-group-chevron {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  transition: transform 120ms ease;
+}
+.pm-overview-tasks-group-chevron svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Toolbar above the task table */
+.pm-overview-tasks-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 0;
+}
+.pm-overview-tasks-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.pm-overview-tasks-toggle input[type='checkbox'] {
+  margin: 0;
+}

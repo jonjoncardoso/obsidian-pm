@@ -331,7 +331,7 @@ export class ProjectOverviewView extends ItemView {
       section.createDiv({ cls: 'pm-overview-muted', text: 'No tasks.' })
       return
     }
-    void renderOverviewTasks(section, this.plugin, project)
+    void renderOverviewTasks(section, this.plugin, project, () => this.render())
   }
 
   private renderProperties(parent: HTMLElement, project: Project, tasks: Task[], rollup: Rollup): void {

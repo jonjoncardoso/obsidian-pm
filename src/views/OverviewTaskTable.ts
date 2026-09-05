@@ -14,6 +14,7 @@ import { TimeCell } from '../ui/composites/cells/TimeCell'
 import { linkedRefs } from './linkedRefs'
 import { childTreeGuides } from '../ui/composites/treeGuides'
 import { renderGlyph } from '../ui/composites/properties'
+import { setIcon } from 'obsidian'
 
 const COL_COUNT = 7
 
@@ -28,13 +29,34 @@ interface OverviewTreeRow extends FlatTask {
  * For leaf projects (no sub-projects): renders the project's own tasks.
  * For parent projects: loads each child project and renders grouped sections
  * with a sub-project header row separating each group.
+ *
+ * Supports collapsible sub-project groups and a toggle to hide done tasks.
+ * The caller passes a `rerender` callback so this module does not need to
+ * import ProjectOverviewView (which would create a circular dependency warning).
  */
 export async function renderOverviewTasks(
   parent: HTMLElement,
   plugin: PMPlugin,
-  project: Project
+  project: Project,
+  rerender: () => void
 ): Promise<void> {
   const children = plugin.index.childRefs(project.filePath)
+  const hideDone = plugin.settings.overviewHideDone
+  const collapsedSet = new Set(
+    plugin.settings.overviewCollapsedGroups[project.filePath] ?? []
+  )
+
+  // Toolbar with hide-done toggle
+  const toolbar = parent.createDiv('pm-overview-tasks-toolbar')
+  const toggle = toolbar.createEl('label', { cls: 'pm-overview-tasks-toggle' })
+  const checkbox = toggle.createEl('input', { type: 'checkbox' })
+  checkbox.checked = hideDone
+  toggle.appendText(' Hide done')
+  checkbox.addEventListener('change', safeAsync(async () => {
+    plugin.settings.overviewHideDone = checkbox.checked
+    await plugin.saveSettings()
+    rerender()
+  }))
 
   const wrapper = parent.createDiv('pm-overview-tasks-wrapper')
   const table = wrapper.createEl('table', { cls: 'pm-overview-tasks' })
@@ -46,25 +68,41 @@ export async function renderOverviewTasks(
   }
 
   const tbody = table.createEl('tbody')
+  const config = plugin.store.configFor(project)
 
   if (children.length > 0) {
     // Parent project: render each child's tasks under a group header.
-    // Include the parent's own direct tasks first if any exist.
     if (project.tasks.length > 0) {
-      renderGroupHeader(tbody, project.title, project.icon, project.color)
-      renderProjectRows(tbody, plugin, project)
+      renderGroupHeader(tbody, project.title, project.icon, project.color, false, () => {})
+      renderProjectRows(tbody, plugin, project, hideDone)
     }
     for (const childRef of children) {
       const child = await plugin.store.loadProjectByPath(childRef.path)
       if (!child) continue
       const flat = flattenTasks(child.tasks).filter((f) => !f.task.archived)
       if (flat.length === 0) continue
-      renderGroupHeader(tbody, childRef.title, childRef.icon, childRef.color)
-      renderProjectRows(tbody, plugin, child)
+
+      const isCollapsed = collapsedSet.has(childRef.path)
+      renderGroupHeader(tbody, childRef.title, childRef.icon, childRef.color, isCollapsed, safeAsync(async () => {
+        const groups = plugin.settings.overviewCollapsedGroups
+        const current = new Set(groups[project.filePath] ?? [])
+        if (current.has(childRef.path)) {
+          current.delete(childRef.path)
+        } else {
+          current.add(childRef.path)
+        }
+        groups[project.filePath] = [...current]
+        await plugin.saveSettings()
+        rerender()
+      }))
+
+      if (!isCollapsed) {
+        renderProjectRows(tbody, plugin, child, hideDone)
+      }
     }
   } else {
     // Leaf project: render own tasks directly.
-    renderProjectRows(tbody, plugin, project)
+    renderProjectRows(tbody, plugin, project, hideDone)
   }
 }
 
@@ -72,23 +110,37 @@ function renderGroupHeader(
   tbody: HTMLElement,
   title: string,
   icon: string,
-  color: string
+  color: string,
+  collapsed: boolean,
+  onToggle: () => void
 ): void {
   const tr = tbody.createEl('tr', { cls: 'pm-overview-tasks-group' })
+  if (collapsed) tr.addClass('pm-overview-tasks-group--collapsed')
   const td = tr.createEl('td', { attr: { colspan: String(COL_COUNT) } })
   const inner = td.createDiv('pm-overview-tasks-group-inner')
+
+  const chevron = inner.createSpan({ cls: 'pm-overview-tasks-group-chevron' })
+  setIcon(chevron, collapsed ? 'chevron-right' : 'chevron-down')
+
   renderGlyph(inner.createSpan({ cls: 'pm-overview-tasks-group-icon' }), { icon, color })
   inner.createSpan({ cls: 'pm-overview-tasks-group-title', text: title })
+
+  tr.addEventListener('click', onToggle)
+  tr.style.cursor = 'pointer'
 }
 
 function renderProjectRows(
   tbody: HTMLElement,
   plugin: PMPlugin,
-  project: Project
+  project: Project,
+  hideDone: boolean
 ): void {
   const config = plugin.store.configFor(project)
   const flat = flattenTasks(project.tasks).filter((f) => !f.task.archived)
-  const visible = flat.filter((f) => f.visible)
+  let visible = flat.filter((f) => f.visible)
+  if (hideDone) {
+    visible = visible.filter((f) => !isTerminalStatus(f.task.status, config.statuses))
+  }
 
   const rows = buildTreeRows(visible)
   const { statuses, priorities, priorityIcons } = config

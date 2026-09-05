@@ -315,6 +315,8 @@ export default class PMPlugin extends Plugin {
     if (!this.settings.scopeViews) this.settings.scopeViews = {}
     if (!this.settings.collapsedTasks) this.settings.collapsedTasks = {}
     if (!this.settings.collapsedProjects) this.settings.collapsedProjects = []
+    if (!this.settings.overviewCollapsedGroups) this.settings.overviewCollapsedGroups = {}
+    if (this.settings.overviewHideDone == null) this.settings.overviewHideDone = false
     if (!this.settings.excludedFolders) this.settings.excludedFolders = []
 
     let migrated = false
