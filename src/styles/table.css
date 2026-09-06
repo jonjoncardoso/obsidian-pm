@@ -126,7 +126,7 @@ button.pm-chip-btn--active:hover {
   background: color-mix(in srgb, var(--interactive-accent) 5%, transparent);
 }
 .pm-table-row--done {
-  opacity: 0.55;
+  opacity: 0.45;
 }
 .pm-table-row--archived {
   opacity: 0.45;

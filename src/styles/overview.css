@@ -379,7 +379,7 @@
 }
 
 .pm-overview-tasks .pm-table-row--done td {
-  opacity: 0.55;
+  opacity: 0.45;
 }
 
 .pm-overview-tasks-group td {
