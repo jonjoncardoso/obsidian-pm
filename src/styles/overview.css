@@ -233,15 +233,16 @@
   margin-top: 12px;
   min-width: var(--pm-timeline-min-width, 320px);
 }
-.pm-timeline--two-rows {
-  height: 142px;
+.pm-timeline--has-tiers {
+  --pm-track-top: calc(20px + var(--pm-tiers-above, 0) * 72px);
+  height: calc(88px + var(--pm-tiers-below, 1) * 72px + var(--pm-tiers-above, 0) * 72px);
 }
 
 .pm-timeline-track {
   position: absolute;
   left: 0;
   right: 0;
-  top: 20px;
+  top: var(--pm-track-top, 20px);
   height: 2px;
   border-radius: 2px;
   background: var(--background-modifier-border);
@@ -250,13 +251,13 @@
 .pm-timeline-today {
   position: absolute;
   left: var(--pm-timeline-pos);
-  top: 0;
+  top: var(--pm-track-top, 20px);
   height: 29px;
   border-left: 1px dashed var(--text-faint);
 }
 .pm-timeline-today-label {
   position: absolute;
-  top: 0;
+  top: -14px;
   transform: translateX(-50%);
   font-size: 10px;
   font-weight: 600;
@@ -269,12 +270,12 @@
 .pm-timeline-item {
   position: absolute;
   left: var(--pm-timeline-pos);
-  top: 0;
+  top: var(--pm-track-top, 20px);
 }
 
 .pm-timeline-dot {
   position: absolute;
-  top: 16px;
+  top: -4px;
   width: 10px;
   height: 10px;
   border-radius: 99px;
@@ -293,23 +294,54 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
 }
 
+/* Below-track labels (tier 0, 2): default position */
 .pm-timeline-label {
   position: absolute;
-  top: 34px;
-  width: 104px;
+  top: 14px;
+  width: 160px;
   transform: translateX(-50%);
   text-align: center;
 }
-.pm-timeline-item--low .pm-timeline-label {
-  top: 88px;
+
+/* Below-track tier rank offset (tier 2 = rank 1) */
+.pm-timeline-item:not(.pm-timeline-item--above) .pm-timeline-label {
+  top: calc(14px + var(--pm-tier-rank, 0) * 72px);
 }
-.pm-timeline-item--low::before {
+.pm-timeline-item:not(.pm-timeline-item--above)::before {
   content: '';
   position: absolute;
-  top: 26px;
-  height: 58px;
+  top: 6px;
+  height: calc(4px + var(--pm-tier-rank, 0) * 72px);
   border-left: 1px solid var(--background-modifier-border);
 }
+/* Hide connector for tier-0 items (no offset needed) */
+.pm-timeline-item:not(.pm-timeline-item--above):not([style*='--pm-tier-rank']) .pm-timeline-label {
+  top: 14px;
+}
+.pm-timeline-item:not(.pm-timeline-item--above):not([style*='--pm-tier-rank'])::before {
+  display: none;
+}
+
+/* Above-track items: positioned so bottom edge sits at the track */
+.pm-timeline-item--above {
+  height: calc(72px + var(--pm-tier-rank, 0) * 72px);
+  top: calc(var(--pm-track-top, 20px) - 72px - var(--pm-tier-rank, 0) * 72px);
+}
+.pm-timeline-item--above .pm-timeline-dot {
+  top: auto;
+  bottom: -4px;
+}
+.pm-timeline-item--above .pm-timeline-label {
+  top: 0;
+}
+.pm-timeline-item--above::before {
+  content: '';
+  position: absolute;
+  bottom: 6px;
+  height: calc(4px + var(--pm-tier-rank, 0) * 72px);
+  border-left: 1px solid var(--background-modifier-border);
+}
+
 .pm-timeline-item--start .pm-timeline-label {
   transform: none;
   text-align: left;
@@ -323,6 +355,10 @@
   font-size: var(--font-ui-smaller);
   font-weight: 500;
   line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .pm-timeline-item--done .pm-timeline-name {
   color: var(--text-muted);
