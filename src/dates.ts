@@ -57,3 +57,35 @@ export function completionOutcome(due: string, completed: string): { text: strin
   const days = dueDate.until(completedDate, { largestUnit: 'day' }).days
   return { text: days > 0 ? `${days}d late` : 'On time', tone: 'outcome' }
 }
+
+/** Structural subset of Task this needs; avoids importing types.ts, which already imports from here. */
+export interface EditableTaskNode {
+  updatedAt: string
+  subtasks: EditableTaskNode[]
+}
+
+/** Latest updatedAt across a task and every descendant subtask, as epoch ms. */
+export function taskLastEdited(task: EditableTaskNode): number {
+  let latest = Date.parse(task.updatedAt)
+  if (Number.isNaN(latest)) latest = 0
+  for (const sub of task.subtasks) {
+    const subLatest = taskLastEdited(sub)
+    if (subLatest > latest) latest = subLatest
+  }
+  return latest
+}
+
+/** Coarse relative label for an epoch-ms timestamp (task/project lastEdited). */
+export function formatRelativeTime(epochMs: number): string {
+  const diffMs = Date.now() - epochMs
+  const diffMinutes = Math.round(diffMs / 60000)
+  if (diffMinutes < 1) return 'just now'
+  if (diffMinutes < 60) return `${diffMinutes}m ago`
+  const diffHours = Math.round(diffMinutes / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.round(diffHours / 24)
+  if (diffDays < 30) return `${diffDays}d ago`
+  const diffMonths = Math.round(diffDays / 30)
+  if (diffMonths < 12) return `${diffMonths}mo ago`
+  return `${Math.round(diffMonths / 12)}y ago`
+}

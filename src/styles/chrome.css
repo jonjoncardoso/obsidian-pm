@@ -214,3 +214,8 @@
 .pm-project-row--complete .pm-task-title-text {
   color: var(--text-muted);
 }
+
+.pm-project-row-last-edited {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}

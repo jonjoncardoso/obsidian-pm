@@ -18,6 +18,7 @@ import { ProjectCell } from '../../ui/composites/cells/ProjectCell'
 import { ProgressCell } from '../../ui/composites/cells/ProgressCell'
 import { SelectCell } from '../../ui/composites/cells/SelectCell'
 import { StatusCell } from '../../ui/composites/cells/StatusCell'
+import { LastEditedCell } from '../../ui/composites/cells/LastEditedCell'
 import { TimeCell } from '../../ui/composites/cells/TimeCell'
 import { TitleCell } from '../../ui/composites/cells/TitleCell'
 
@@ -152,6 +153,7 @@ export function renderTaskRow(tbody: HTMLElement, flat: TableTreeRow, ctx: Table
     }
   })
   new TimeCell(row, { logged: totalLoggedHours(task), estimate: task.timeEstimate ?? 0 })
+  new LastEditedCell(row, { task })
 
   for (const cf of ctx.scope.customFields()) {
     const value = customFieldValue(ctx.plugin.app, cf, task.customFields[cf.id], task.filePath ?? project.filePath)

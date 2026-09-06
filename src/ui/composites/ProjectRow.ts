@@ -7,6 +7,7 @@ import { renderDueChip, type DueUrgency } from './dueChip'
 import { renderGlyph } from './properties'
 import { renderTimeChip } from './timeChip'
 import { renderTreeGuides } from './treeGuides'
+import { formatRelativeTime } from '../../dates'
 
 export interface ProjectRowProps {
   title: string
@@ -28,6 +29,7 @@ export interface ProjectRowProps {
   dueUrgency: DueUrgency
   logged: number
   estimate: number
+  lastEdited: number
   onToggleCollapsed: () => void
   onClick: () => void
   onContextMenu: (e: MouseEvent) => void
@@ -90,6 +92,12 @@ export class ProjectRow {
     if (!renderTimeChip(time, props.logged, props.estimate, 'sm')) {
       time.createSpan({ cls: 'pm-project-row-empty', text: '—' })
     }
+
+    const lastEdited = this.el.createEl('td', { cls: 'pm-table-cell' })
+    lastEdited.createSpan({
+      cls: props.lastEdited ? 'pm-project-row-last-edited' : 'pm-project-row-empty',
+      text: props.lastEdited ? formatRelativeTime(props.lastEdited) : '—'
+    })
 
     const actions = this.el.createEl('td', { cls: 'pm-table-cell pm-table-cell-actions' })
     new IconButton(actions)

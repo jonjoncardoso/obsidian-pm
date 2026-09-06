@@ -26,6 +26,10 @@ export interface ProjectRef {
   completeStatusIds: string[] | null
   /** Days before a completed task is archived. Null inherits the global setting. */
   autoArchiveDays: number | null
+  /** File creation time (epoch ms), from the vault file's own stat. */
+  createdAt: number
+  /** File last-modified time (epoch ms), from the vault file's own stat. */
+  lastEdited: number
 }
 
 export interface TaskRef {
@@ -46,6 +50,10 @@ export interface TaskRef {
   timeEstimate: number | undefined
   /** Sum of frontmatter timeLogs[].hours, in hours. Zero when the task has no logs. */
   loggedHours: number
+  /** File creation time (epoch ms), from the vault file's own stat. */
+  createdAt: number
+  /** File last-modified time (epoch ms), from the vault file's own stat. */
+  lastEdited: number
 }
 
 function str(raw: unknown, fallback = ''): string {
@@ -78,6 +86,27 @@ function ownAutoArchiveDays(frontmatter: Record<string, unknown>): number | null
 function timeEstimateOf(frontmatter: Record<string, unknown>): number | undefined {
   const value = frontmatter.timeEstimate
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+// Frontmatter updatedAt/createdAt are the real edit signal, stamped by TaskTreeOps on every
+// write through the task editor. File stat is only a fallback for cards written before those
+// fields existed, or touched by something outside the app (a script, a sync tool).
+function lastEditedOf(frontmatter: Record<string, unknown>, file: TFile): number {
+  const value = frontmatter.updatedAt
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value)
+    if (!Number.isNaN(parsed)) return parsed
+  }
+  return file.stat.mtime
+}
+
+function createdAtOf(frontmatter: Record<string, unknown>, file: TFile): number {
+  const value = frontmatter.createdAt
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value)
+    if (!Number.isNaN(parsed)) return parsed
+  }
+  return file.stat.ctime
 }
 
 function loggedHoursOf(frontmatter: Record<string, unknown>): number {
@@ -290,6 +319,22 @@ export class VaultIndex {
     return totals
   }
 
+  lastEdited(ref: ProjectRef): number {
+    let latest = ref.lastEdited
+    for (const task of this.countableTasks(ref)) {
+      latest = Math.max(latest, task.lastEdited)
+    }
+    return latest
+  }
+
+  rollupLastEdited(ref: ProjectRef): number {
+    let latest = this.lastEdited(ref)
+    for (const descendant of this.descendantRefs(ref.path)) {
+      latest = Math.max(latest, this.lastEdited(descendant))
+    }
+    return latest
+  }
+
   projectRef(path: string): ProjectRef | null {
     return this.projects.get(normalizePath(path)) ?? null
   }
@@ -457,7 +502,7 @@ export class VaultIndex {
     const frontmatter = cache.frontmatter
     if (!frontmatter) return
     if (frontmatter[FRONTMATTER_KEY] === true && !insideTaskFolder(path)) this.addProject(path, file, frontmatter)
-    else if (frontmatter[TASK_FRONTMATTER_KEY] === true) this.addTask(path, frontmatter)
+    else if (frontmatter[TASK_FRONTMATTER_KEY] === true) this.addTask(path, file, frontmatter)
   }
 
   private addProject(path: string, file: TFile, frontmatter: Record<string, unknown>): void {
@@ -473,14 +518,16 @@ export class VaultIndex {
       parentPath: resolveVaultLink(this.app, frontmatter.parent, path),
       ownStatusIds: own ? own.map((entry) => entry.id as string) : null,
       completeStatusIds: own ? own.filter((entry) => entry.complete === true).map((entry) => entry.id as string) : null,
-      autoArchiveDays: ownAutoArchiveDays(frontmatter)
+      autoArchiveDays: ownAutoArchiveDays(frontmatter),
+      createdAt: createdAtOf(frontmatter, file),
+      lastEdited: lastEditedOf(frontmatter, file)
     }
     this.projects.set(path, ref)
     this.projectPathById.set(ref.id, path)
     this.treeDirty = true
   }
 
-  private addTask(path: string, frontmatter: Record<string, unknown>): void {
+  private addTask(path: string, file: TFile, frontmatter: Record<string, unknown>): void {
     const projectId = str(frontmatter.projectId)
     const ref: TaskRef = {
       id: str(frontmatter.id, path),
@@ -497,7 +544,9 @@ export class VaultIndex {
       assignees: stringList(frontmatter.assignees),
       archived: path.split('/').at(-2) === 'Archive',
       timeEstimate: timeEstimateOf(frontmatter),
-      loggedHours: loggedHoursOf(frontmatter)
+      loggedHours: loggedHoursOf(frontmatter),
+      createdAt: createdAtOf(frontmatter, file),
+      lastEdited: lastEditedOf(frontmatter, file)
     }
     this.tasks.set(path, ref)
     this.taskById.set(ref.id, ref)

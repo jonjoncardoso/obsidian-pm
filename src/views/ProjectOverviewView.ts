@@ -2,7 +2,7 @@ import { ButtonComponent, Component, ItemView, MarkdownRenderer, WorkspaceLeaf }
 import type PMPlugin from '../main'
 import type { Project, ResolvedProjectConfig, Task } from '../types'
 import { collectAllTags, flattenTasks, personKeyer, totalLoggedHours, type ProjectRef } from '../store'
-import { Temporal, formatDateLong, parsePlainDate, today } from '../dates'
+import { Temporal, formatDateLong, formatRelativeTime, parsePlainDate, today } from '../dates'
 import { dateUrgency, dedupePeople, isTerminalStatus, safeAsync, truncateTitle } from '../utils'
 import { Avatar } from '../ui/primitives/Avatar'
 import { linkedRefs } from './linkedRefs'
@@ -33,6 +33,7 @@ interface Rollup {
   logged: number
   estimate: number
   latestDue: string
+  lastEdited: number
 }
 
 export class ProjectOverviewView extends ItemView {
@@ -152,13 +153,15 @@ export class ProjectOverviewView extends ItemView {
     const counts = this.plugin.index.rollupCounts(ref)
     const due = this.plugin.index.rollupDueSummary(ref)
     const hours = this.plugin.index.rollupHours(ref)
+    const lastEdited = this.plugin.index.rollupLastEdited(ref)
     return {
       total: counts.total,
       done: counts.done,
       overdue: due.overdue,
       latestDue: due.latestDue,
       estimate: Math.round(hours.estimate * 10) / 10,
-      logged: Math.round(hours.logged * 10) / 10
+      logged: Math.round(hours.logged * 10) / 10,
+      lastEdited
     }
   }
 
@@ -239,6 +242,11 @@ export class ProjectOverviewView extends ItemView {
         extra: (el) => {
           renderTimeChip(el, rollup.logged, rollup.estimate)
         }
+      },
+      {
+        label: 'Last edited',
+        value: rollup.lastEdited ? formatRelativeTime(rollup.lastEdited) : '—',
+        sub: rollup.lastEdited ? new Date(rollup.lastEdited).toLocaleDateString() : 'no activity'
       }
     ]
     renderMetricStrip(parent, stats)
@@ -432,13 +440,15 @@ export class ProjectOverviewView extends ItemView {
 
 function summarize(tasks: Task[], config: ResolvedProjectConfig): Rollup {
   const now = today()
-  const rollup: Rollup = { total: 0, done: 0, overdue: 0, logged: 0, estimate: 0, latestDue: '' }
+  const rollup: Rollup = { total: 0, done: 0, overdue: 0, logged: 0, estimate: 0, latestDue: '', lastEdited: 0 }
   for (const task of tasks) {
     rollup.total++
     rollup.logged += totalLoggedHours(task)
     rollup.estimate += task.timeEstimate ?? 0
     const complete = isTerminalStatus(task.status, config.statuses)
     if (complete) rollup.done++
+    const edited = Date.parse(task.updatedAt)
+    if (!Number.isNaN(edited)) rollup.lastEdited = Math.max(rollup.lastEdited, edited)
     const due = parsePlainDate(task.due)
     if (!due) continue
     if (task.due > rollup.latestDue) rollup.latestDue = task.due

@@ -103,7 +103,8 @@ export function renderTable(ctx: TableContext): void {
     { key: 'assignees', label: 'Assignees', width: '140px' },
     { key: 'due', label: 'Due', width: '110px' },
     { key: 'progress', label: 'Progress', width: '120px' },
-    { key: null, label: 'Time', width: '90px' }
+    { key: null, label: 'Time', width: '90px' },
+    { key: null, label: 'Last edited', width: '110px' }
   ]
   const sortableHeaders: { key: SortKey; th: HTMLElement }[] = []
   const paintSortIndicators = () => {
@@ -268,7 +269,7 @@ function renderWindowRows(ctx: TableContext): void {
   if (!tbody) return
 
   const rows = state.visibleRows
-  const colCount = 10 + ctx.scope.customFields().length + (ctx.scope.isMulti ? 1 : 0)
+  const colCount = 11 + ctx.scope.customFields().length + (ctx.scope.isMulti ? 1 : 0)
   const { start, end } = computeWindow(state)
   state.windowStart = start
   state.windowEnd = end

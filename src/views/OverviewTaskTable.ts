@@ -10,13 +10,14 @@ import { PriorityCell } from '../ui/composites/cells/PriorityCell'
 import { AssigneesCell } from '../ui/composites/cells/AssigneesCell'
 import { DueDateCell } from '../ui/composites/cells/DueDateCell'
 import { ProgressCell } from '../ui/composites/cells/ProgressCell'
+import { LastEditedCell } from '../ui/composites/cells/LastEditedCell'
 import { TimeCell } from '../ui/composites/cells/TimeCell'
 import { linkedRefs } from './linkedRefs'
 import { childTreeGuides } from '../ui/composites/treeGuides'
 import { renderGlyph } from '../ui/composites/properties'
 import { setIcon } from 'obsidian'
 
-const COL_COUNT = 7
+const COL_COUNT = 8
 
 interface OverviewTreeRow extends FlatTask {
   guides: boolean[]
@@ -63,7 +64,7 @@ export async function renderOverviewTasks(
 
   const thead = table.createEl('thead')
   const hrow = thead.createEl('tr')
-  for (const label of ['Task', 'Status', 'Priority', 'Assignees', 'Due', 'Progress', 'Time']) {
+  for (const label of ['Task', 'Status', 'Priority', 'Assignees', 'Due', 'Progress', 'Time', 'Last edited']) {
     hrow.createEl('th', { text: label })
   }
 
@@ -210,6 +211,8 @@ function renderProjectRows(
     })
 
     new TimeCell(tr, { logged: totalLoggedHours(task), estimate: task.timeEstimate ?? 0 })
+
+    new LastEditedCell(tr, { task })
   }
 }
 
