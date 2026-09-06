@@ -163,6 +163,17 @@ describe('project round-trip', () => {
     expect(project.teamMembers).toEqual(['Alice', 'Bob'])
   })
 
+  it('does not write the Tasks body into description when description is empty', () => {
+    const p = makeProject('v2.0 - board', 'Projects/Tooling/board/v2.0 - board/v2.0 - board.md')
+    p.description = '# 🟢 v2.0 - board\n\n## Tasks\n- [ ] [[task|Task]]'
+    p.tasks = [makeTask({ id: 't-1', title: 'Task', filePath: 'Projects/Tooling/board/v2.0 - board/_tasks/task.md' })]
+    const md = serializeProject(p)
+    const { frontmatter, body } = parseFrontmatter(md)
+    expect(frontmatter?.description).toBe('')
+    expect(body).toContain('## Tasks')
+    expect(body).not.toMatch(/^# 🟢 v2\.0 - board[\s\S]*## Tasks[\s\S]*## Tasks/m)
+  })
+
   it('preserves saved views with filter, sortKey, and sortDir', () => {
     const p = makeProject('P', 'Projects/P.md')
     const view: SavedView = {
