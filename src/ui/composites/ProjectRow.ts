@@ -5,6 +5,7 @@ import { IconButton } from '../primitives/IconButton'
 import { ProgressBar } from '../primitives/ProgressBar'
 import { renderDueChip, type DueUrgency } from './dueChip'
 import { renderGlyph } from './properties'
+import { renderTimeChip } from './timeChip'
 import { renderTreeGuides } from './treeGuides'
 
 export interface ProjectRowProps {
@@ -25,6 +26,8 @@ export interface ProjectRowProps {
   /** Formatted by the caller; empty when nothing in the project has a date. */
   dueLabel: string
   dueUrgency: DueUrgency
+  logged: number
+  estimate: number
   onToggleCollapsed: () => void
   onClick: () => void
   onContextMenu: (e: MouseEvent) => void
@@ -82,6 +85,11 @@ export class ProjectRow {
     const due = this.el.createEl('td', { cls: 'pm-table-cell' })
     if (props.dueLabel) renderDueChip(due, props.dueLabel, props.dueUrgency, 'sm')
     else due.createSpan({ cls: 'pm-project-row-empty', text: '—' })
+
+    const time = this.el.createEl('td', { cls: 'pm-table-cell' })
+    if (!renderTimeChip(time, props.logged, props.estimate, 'sm')) {
+      time.createSpan({ cls: 'pm-project-row-empty', text: '—' })
+    }
 
     const actions = this.el.createEl('td', { cls: 'pm-table-cell pm-table-cell-actions' })
     new IconButton(actions)

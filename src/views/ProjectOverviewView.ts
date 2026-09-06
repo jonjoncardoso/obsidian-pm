@@ -313,6 +313,8 @@ export class ProjectOverviewView extends ItemView {
     const section = this.section(parent, 'Sub-projects')
     for (const child of children) {
       const { total, done } = this.plugin.index.rollupCounts(child)
+      const grandchildren = this.plugin.index.childRefs(child.path)
+      const hours = grandchildren.length ? this.plugin.index.rollupHours(child) : this.plugin.index.hours(child)
       const row = section.createDiv('pm-overview-child')
       renderGlyph(row.createSpan({ cls: 'pm-overview-child-icon' }), { icon: child.icon, color: child.color })
       row.createSpan({ cls: 'pm-overview-child-title', text: child.title })
@@ -322,6 +324,7 @@ export class ProjectOverviewView extends ItemView {
         .setColor(child.color)
         .setShowLabel(true)
       row.createSpan({ cls: 'pm-overview-child-count', text: `${done}/${total}` })
+      renderTimeChip(row, hours.logged, hours.estimate, 'sm')
       row.addEventListener(
         'click',
         safeAsync(() => this.plugin.router.openProjectLink(child.path))

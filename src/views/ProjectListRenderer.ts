@@ -16,6 +16,7 @@ const COLUMNS: { label: string; cls?: string }[] = [
   { label: 'Tasks' },
   { label: 'Members' },
   { label: 'Due' },
+  { label: 'Time' },
   { label: '' }
 ]
 
@@ -80,6 +81,7 @@ function renderRows(ctx: ProjectListContext, tbody: HTMLElement, refs: ProjectRe
     const collapsed = ctx.plugin.isProjectCollapsed(ref.path)
     const { total, done } = children.length ? index.rollupCounts(ref) : index.counts(ref)
     const { overdue, latestDue } = children.length ? index.rollupDueSummary(ref) : index.dueSummary(ref)
+    const { logged, estimate } = children.length ? index.rollupHours(ref) : index.hours(ref)
     const isLastChild = i === refs.length - 1
 
     new ProjectRow(tbody, {
@@ -97,6 +99,8 @@ function renderRows(ctx: ProjectListContext, tbody: HTMLElement, refs: ProjectRe
       members: linkedRefs(ctx.plugin.app, ref.teamMembers, ref.path),
       dueLabel: formatDateShort(latestDue),
       dueUrgency: dateUrgency(latestDue, overdue > 0),
+      logged,
+      estimate,
       onToggleCollapsed: safeAsync(async () => {
         await ctx.plugin.toggleProjectCollapsed(ref.path)
         renderProjectListContent(ctx)
