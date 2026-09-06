@@ -16,6 +16,7 @@ export interface KanbanCardProps {
   /** Leading slot in the footer, filled when a card has to say where it is from. */
   renderSource?: (parent: HTMLElement) => void
   loggedHours: number
+  estimateHours: number
   overdue: boolean
   showTagColors: boolean
   onClick: () => void
@@ -76,7 +77,7 @@ export class KanbanCard {
       body.createDiv({ cls: 'pm-kanban-card-description', text: props.descriptionPreview })
     }
 
-    renderTimeChip(body, props.loggedHours, task.timeEstimate ?? 0, 'sm')
+    renderTimeChip(body, props.loggedHours, props.estimateHours, 'sm')
 
     if (task.tags.length) {
       const tagsEl = body.createDiv('pm-kanban-card-tags')

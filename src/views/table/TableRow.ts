@@ -1,7 +1,7 @@
 import { Menu, type App } from 'obsidian'
 import { getStatusConfig, dueUrgency, isTerminalStatus, safeAsync, stringifyCustomValue } from '../../utils'
 import type { CustomFieldDef } from '../../types'
-import { totalLoggedHours } from '../../store/TaskTreeOps'
+import { subtreeLoggedHours, subtreeTimeEstimate } from '../../store/TaskTreeOps'
 import { updateSelectCheckboxes, getVisibleTaskIds } from './TableRenderer'
 import type { TableContext, TableState, TableTreeRow } from './TableRenderer'
 import { openTaskModal } from '../../ui/ModalFactory'
@@ -152,7 +152,7 @@ export function renderTaskRow(tbody: HTMLElement, flat: TableTreeRow, ctx: Table
       await ctx.onRefresh()
     }
   })
-  new TimeCell(row, { logged: totalLoggedHours(task), estimate: task.timeEstimate ?? 0 })
+  new TimeCell(row, { logged: subtreeLoggedHours(task), estimate: subtreeTimeEstimate(task) })
   new LastEditedCell(row, { task })
 
   for (const cf of ctx.scope.customFields()) {

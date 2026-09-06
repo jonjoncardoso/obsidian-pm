@@ -2,7 +2,7 @@ import { Menu } from 'obsidian'
 import type PMPlugin from '../main'
 import type { Task, TaskStatus, FilterState, ResolvedProjectConfig } from '../types'
 import { personKeyer, type ProjectScope } from '../store'
-import { flattenTasks, totalLoggedHours } from '../store/TaskTreeOps'
+import { flattenTasks, subtreeLoggedHours, subtreeTimeEstimate } from '../store/TaskTreeOps'
 import { matchesFilter } from '../store/TaskFilter'
 import { displayName, dueUrgency, getPriorityConfig, safeAsync } from '../utils'
 import { openTaskModal } from '../ui/ModalFactory'
@@ -122,7 +122,8 @@ export class KanbanView implements SubView {
               onClick: safeAsync(() => this.plugin.router.openProjectLink(owner.filePath))
             })
         : undefined,
-      loggedHours: totalLoggedHours(task),
+      loggedHours: subtreeLoggedHours(task),
+      estimateHours: subtreeTimeEstimate(task),
       overdue: dueUrgency(task, this.config.statuses) === 'overdue',
       showTagColors: this.plugin.settings.showTagColors
     }

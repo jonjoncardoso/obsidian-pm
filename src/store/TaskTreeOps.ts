@@ -167,3 +167,31 @@ export function totalLoggedHours(task: Task): number {
   if (!task.timeLogs?.length) return 0
   return task.timeLogs.reduce((sum, log) => sum + log.hours, 0)
 }
+
+/**
+ * Sum logged hours across a task and all its descendants.
+ * A parent's own timeLogs count (coordination overhead), plus every subtask's.
+ */
+export function subtreeLoggedHours(task: Task): number {
+  let total = totalLoggedHours(task)
+  for (const child of task.subtasks) total += subtreeLoggedHours(child)
+  return total
+}
+
+/**
+ * Resolve the effective time estimate for a task.
+ * When a task has subtasks with any estimate, sum those (recursively) and
+ * ignore the parent's own timeEstimate. When no subtask carries an estimate,
+ * fall back to the task's own timeEstimate.
+ */
+export function subtreeTimeEstimate(task: Task): number {
+  if (task.subtasks.length === 0) return task.timeEstimate ?? 0
+  let childSum = 0
+  let anyChildEstimate = false
+  for (const child of task.subtasks) {
+    const est = subtreeTimeEstimate(child)
+    if (est > 0) anyChildEstimate = true
+    childSum += est
+  }
+  return anyChildEstimate ? childSum : (task.timeEstimate ?? 0)
+}

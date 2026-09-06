@@ -1,6 +1,6 @@
 import type PMPlugin from '../main'
 import type { Project, Task } from '../types'
-import { flattenTasks, type FlatTask, totalLoggedHours } from '../store/TaskTreeOps'
+import { flattenTasks, type FlatTask, subtreeLoggedHours, subtreeTimeEstimate } from '../store/TaskTreeOps'
 import { isTerminalStatus, getStatusConfig, dueUrgency, safeAsync } from '../utils'
 import { openTaskModal } from '../ui/ModalFactory'
 import { TaskRow } from '../ui/composites/TaskRow'
@@ -210,7 +210,7 @@ function renderProjectRows(
       onSave: async () => {}
     })
 
-    new TimeCell(tr, { logged: totalLoggedHours(task), estimate: task.timeEstimate ?? 0 })
+    new TimeCell(tr, { logged: subtreeLoggedHours(task), estimate: subtreeTimeEstimate(task) })
 
     new LastEditedCell(tr, { task })
   }

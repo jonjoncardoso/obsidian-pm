@@ -19,6 +19,7 @@ export interface KanbanCardData {
   parentTitle?: string
   renderSource?: (parent: HTMLElement) => void
   loggedHours: number
+  estimateHours: number
   overdue: boolean
   showTagColors: boolean
 }
@@ -75,6 +76,7 @@ export class KanbanColumn {
         parentTitle: card.parentTitle,
         renderSource: card.renderSource,
         loggedHours: card.loggedHours,
+        estimateHours: card.estimateHours,
         overdue: card.overdue,
         showTagColors: card.showTagColors,
         onClick: () => props.onCardClick(card.task),
