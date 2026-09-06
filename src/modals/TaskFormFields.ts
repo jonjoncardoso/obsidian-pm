@@ -4,7 +4,7 @@ import { collectAllAssignees, collectAllTags, flattenTasks } from '../store/Task
 import { reaches } from '../store/Scheduler'
 import { renderPropRow } from '../ui/FormField'
 import { isTerminalStatus, priorityIcon, stringToColor } from '../utils'
-import { completionOutcome, relativeDue } from '../dates'
+import { completionOutcome, relativeDue, today } from '../dates'
 import { renderCustomFieldInput } from './CustomFieldInputs'
 import { renderPersonPicker } from '../ui/PersonPicker'
 import {
@@ -244,7 +244,7 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
     )
   }
 
-  if (task.type !== 'milestone' && (task.progress > 0 || shownExtras.has('progress'))) {
+  if (task.type !== 'milestone') {
     renderPropRow(
       grid,
       'Progress',
@@ -257,7 +257,15 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
           suffix: '%',
           number: { min: 0, max: 100 },
           onChange: (v) => {
+            const prev = task.progress
             task.progress = Number(v)
+            if (prev === 0 && task.progress > 0 && task.status === 'todo') {
+              task.status = 'in-progress'
+            }
+            if (task.progress === 100 && !isTerminalStatus(task.status, statuses)) {
+              task.status = 'done'
+              if (!task.completed) task.completed = today().toString()
+            }
             rerender()
           }
         })
@@ -413,9 +421,6 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
   }
 
   const hidden: HiddenProperty[] = []
-  if (task.type !== 'milestone' && task.progress === 0 && !shownExtras.has('progress')) {
-    hidden.push({ id: 'progress', label: 'Progress', icon: 'percent' })
-  }
   if (!task.recurrence && !shownExtras.has('repeat')) {
     hidden.push({ id: 'repeat', label: 'Repeat', icon: 'repeat' })
   }
