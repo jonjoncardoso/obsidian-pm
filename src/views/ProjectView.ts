@@ -73,7 +73,13 @@ export class ProjectView extends ItemView {
     return PM_PROJECT_VIEW_TYPE
   }
   getDisplayText(): string {
-    return truncateTitle(this.projectScope?.label() ?? 'Project', 10)
+    if (this.projectScope?.primary) {
+      const project = this.projectScope.primary
+      const parent = this.plugin.index.parentOf(project.filePath)
+      const title = parent ? `${parent.title} / ${project.title}` : project.title
+      return truncateTitle(title, 30)
+    }
+    return truncateTitle(this.projectScope?.label() ?? 'Project', 30)
   }
   getIcon(): string {
     return 'chart-gantt'
