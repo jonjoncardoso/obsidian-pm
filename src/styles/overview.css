@@ -413,6 +413,9 @@
   padding: 4px 8px;
   border-bottom: 1px solid var(--background-modifier-border-subtle, var(--background-modifier-border));
 }
+.pm-overview-tasks .pm-table-row td.pm-table-cell-title {
+  padding: 8px 10px 8px calc(var(--depth, 0) * var(--pm-tree-indent) + 8px);
+}
 
 .pm-overview-tasks .pm-table-row--done td {
   opacity: 0.45;

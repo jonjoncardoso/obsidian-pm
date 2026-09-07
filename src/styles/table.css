@@ -154,15 +154,18 @@ button.pm-chip-btn--active:hover {
   vertical-align: middle;
 }
 .pm-table-cell-title {
-  --pm-tree-indent: 20px;
+  --pm-tree-indent: 32px;
   position: relative;
   padding: 8px 10px 8px calc(var(--depth, 0) * var(--pm-tree-indent) + 8px);
   vertical-align: middle;
   min-width: 180px;
+  height: 1px;
 }
 /* The cell stays a real table cell, so a row made taller by another column still centers
    the title; the title, its badges and its tags are this flex row inside it. */
 .pm-table-title-inner {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -177,6 +180,7 @@ button.pm-chip-btn--active:hover {
   left: calc(var(--level) * var(--pm-tree-indent));
   width: var(--pm-tree-indent);
   pointer-events: none;
+  z-index: 0;
 }
 .pm-tree-guide::before {
   content: '';
@@ -188,12 +192,12 @@ button.pm-chip-btn--active:hover {
   background: var(--background-modifier-border);
 }
 .pm-tree-guide--last::before {
-  bottom: 50%;
+  bottom: calc(100% - 17px);
 }
 .pm-tree-guide--elbow::after {
   content: '';
   position: absolute;
-  top: 50%;
+  top: 17px;
   left: calc(var(--pm-tree-indent) / 2);
   width: calc(var(--pm-tree-indent) / 2 + 4px);
   height: 1px;
