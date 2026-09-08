@@ -236,6 +236,7 @@ export class SprintView extends ItemView {
     }
     renderGlyph(head.createSpan({ cls: 'pm-sprint-project-icon' }), { icon: node.ref.icon, color: node.ref.color })
     head.createSpan({ cls: 'pm-sprint-project-title', text: node.ref.title })
+    renderTimeChip(head, node.logged, node.estimate, 'sm')
     head.addEventListener(
       'click',
       safeAsync(() => this.plugin.router.openProjectLink(node.ref.path))
@@ -277,14 +278,12 @@ export class SprintView extends ItemView {
       )
     }
     row.createSpan({ cls: 'pm-sprint-task-title', text: node.ref.title })
-    if (!node.groupingOnly) {
-      renderTimeChip(row, node.logged, node.estimate, 'sm')
-      if (node.hours.agent > 0 || node.hours.jon > 0) {
-        row.createSpan({
-          cls: 'pm-sprint-task-actors',
-          text: `agent ${node.hours.agent}h · Jon ${node.hours.jon}h`
-        })
-      }
+    renderTimeChip(row, node.logged, node.estimate, 'sm')
+    if (!node.groupingOnly && (node.hours.agent > 0 || node.hours.jon > 0)) {
+      row.createSpan({
+        cls: 'pm-sprint-task-actors',
+        text: `agent ${node.hours.agent}h · Jon ${node.hours.jon}h`
+      })
     }
     if (node.groupingOnly && hasChildren) {
       row.addEventListener(

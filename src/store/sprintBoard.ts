@@ -46,6 +46,9 @@ export interface SprintProjectNode {
   ref: ProjectRef
   children: SprintProjectNode[]
   tasks: SprintTaskNode[]
+  hours: ActorHours
+  logged: number
+  estimate: number
 }
 
 export interface SprintColumnModel {
@@ -170,13 +173,15 @@ function rootTaskNodes(projectPath: string, members: TaskRef[], index: VaultInde
     const parent = index.task(parentId)
     if (!parent) continue
     const childNodes = children.map((child) => buildTaskNode(child, members, details, false))
+    const hours = childNodes.reduce((sum, child) => addHours(sum, child.hours), { agent: 0, jon: 0 })
+    const estimate = childNodes.reduce((sum, child) => sum + child.estimate, 0)
     nodes.push({
       ref: parent,
       groupingOnly: true,
       children: childNodes,
-      hours: { agent: 0, jon: 0 },
-      logged: 0,
-      estimate: 0
+      hours: { agent: roundHours(hours.agent), jon: roundHours(hours.jon) },
+      logged: roundHours(hours.agent + hours.jon),
+      estimate: roundHours(estimate)
     })
   }
   for (const ref of roots) nodes.push(buildTaskNode(ref, members, details, false))
@@ -207,7 +212,20 @@ export function buildSprintColumnFromTag(
       .filter((node): node is SprintProjectNode => node !== null)
     const tasks = rootTaskNodes(path, members, index, details)
     if (children.length === 0 && tasks.length === 0) return null
-    return { ref, children, tasks }
+    const hours = [...tasks, ...children].reduce(
+      (sum, node) => addHours(sum, node.hours),
+      { agent: 0, jon: 0 }
+    )
+    const logged = [...tasks, ...children].reduce((sum, node) => sum + node.logged, 0)
+    const estimate = [...tasks, ...children].reduce((sum, node) => sum + node.estimate, 0)
+    return {
+      ref,
+      children,
+      tasks,
+      hours: { agent: roundHours(hours.agent), jon: roundHours(hours.jon) },
+      logged: roundHours(logged),
+      estimate: roundHours(estimate)
+    }
   }
 
   const projects = index
