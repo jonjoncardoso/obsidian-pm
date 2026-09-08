@@ -1,4 +1,5 @@
 import type { TimeLog } from '../types'
+import type { Temporal } from '../dates'
 
 export const TAG_SPRINT_CURRENT = 'week-sprint'
 export const TAG_SPRINT_NEXT = 'next-sprint'
@@ -6,6 +7,7 @@ export const TAG_SPRINT_NEXT = 'next-sprint'
 export type SprintLane = 'current' | 'next'
 
 const LIVE_TAGS = [TAG_SPRINT_CURRENT, TAG_SPRINT_NEXT] as const
+const PAST_SPRINT_RE = /^sprint-(\d{4})-W(\d{2})$/
 
 function tagFor(lane: SprintLane): string {
   return lane === 'current' ? TAG_SPRINT_CURRENT : TAG_SPRINT_NEXT
@@ -28,6 +30,37 @@ export function applySprintTag(tags: string[], lane: SprintLane | null): string[
 
 export function toggleSprintTag(tags: string[], lane: SprintLane): string[] {
   return applySprintTag(tags, sprintMembership(tags) === lane ? null : lane)
+}
+
+export function pastSprintTag(date: Temporal.PlainDate): string {
+  const week = date.weekOfYear ?? 0
+  const year = date.yearOfWeek ?? date.year
+  return `sprint-${year}-W${String(week).padStart(2, '0')}`
+}
+
+export function parsePastSprintTag(tag: string): { year: number; week: number } | null {
+  const match = PAST_SPRINT_RE.exec(tag)
+  if (!match) return null
+  return { year: Number(match[1]), week: Number(match[2]) }
+}
+
+export function isPastSprintTag(tag: string): boolean {
+  return parsePastSprintTag(tag) !== null
+}
+
+/** Latest ISO week first. */
+export function comparePastSprintTags(a: string, b: string): number {
+  const left = parsePastSprintTag(a)
+  const right = parsePastSprintTag(b)
+  if (!left || !right) return b.localeCompare(a)
+  if (left.year !== right.year) return right.year - left.year
+  return right.week - left.week
+}
+
+export function retagCurrentToPast(tags: string[], pastTag: string): string[] {
+  const kept = tags.filter((tag) => tag !== TAG_SPRINT_CURRENT)
+  if (kept.includes(pastTag)) return kept
+  return [...kept, pastTag]
 }
 
 export function hoursByActor(logs: TimeLog[]): { agent: number; jon: number } {

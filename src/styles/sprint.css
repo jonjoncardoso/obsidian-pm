@@ -14,7 +14,7 @@
 
 .pm-sprint-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
   align-items: start;
   min-height: 0;
@@ -44,6 +44,34 @@
 .pm-sprint-col-meta {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+.pm-sprint-past-group {
+  margin: 4px 0 10px;
+}
+
+.pm-sprint-past-group-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 2px 0;
+}
+
+.pm-sprint-past-group-head .pm-collapse-toggle {
+  margin-left: -2px;
+}
+
+.pm-sprint-past-group-title {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+}
+
+.pm-sprint-past-group-body {
+  margin-top: 4px;
 }
 
 .pm-sprint-col-body {
@@ -93,6 +121,10 @@
   font-size: 13px;
   cursor: pointer;
   border-radius: var(--radius-s);
+}
+
+.pm-sprint-task--done {
+  opacity: 0.45;
 }
 
 .pm-sprint-task:hover {

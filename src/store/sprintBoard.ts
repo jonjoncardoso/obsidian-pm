@@ -1,6 +1,6 @@
 import type { TimeLog } from '../types'
 import type { ProjectRef, TaskRef, VaultIndex } from './VaultIndex'
-import { hoursByActor, type SprintLane, TAG_SPRINT_CURRENT, TAG_SPRINT_NEXT } from './sprintTags'
+import { hoursByActor, isPastSprintTag, comparePastSprintTags, type SprintLane, TAG_SPRINT_CURRENT, TAG_SPRINT_NEXT } from './sprintTags'
 
 export interface SprintTaskDetails {
   timeLogs: TimeLog[]
@@ -49,7 +49,7 @@ export interface SprintProjectNode {
 }
 
 export interface SprintColumnModel {
-  lane: SprintLane
+  lane: SprintLane | 'past'
   tag: string
   cardCount: number
   hours: ActorHours
@@ -62,9 +62,23 @@ export function tagForLane(lane: SprintLane): string {
   return lane === 'current' ? TAG_SPRINT_CURRENT : TAG_SPRINT_NEXT
 }
 
-export function sprintMembers(index: VaultIndex, lane: SprintLane): TaskRef[] {
-  const tag = tagForLane(lane)
+export function sprintMembersForTag(index: VaultIndex, tag: string): TaskRef[] {
   return index.allTaskRefs().filter((ref) => !ref.archived && ref.tags.includes(tag))
+}
+
+export function sprintMembers(index: VaultIndex, lane: SprintLane): TaskRef[] {
+  return sprintMembersForTag(index, tagForLane(lane))
+}
+
+export function listPastSprintTags(index: VaultIndex): string[] {
+  const found = new Set<string>()
+  for (const ref of index.allTaskRefs()) {
+    if (ref.archived) continue
+    for (const tag of ref.tags) {
+      if (isPastSprintTag(tag)) found.add(tag)
+    }
+  }
+  return [...found].sort(comparePastSprintTags)
 }
 
 function roundHours(value: number): number {
@@ -170,12 +184,13 @@ function rootTaskNodes(projectPath: string, members: TaskRef[], index: VaultInde
   return nodes
 }
 
-export function buildSprintColumn(
+export function buildSprintColumnFromTag(
   index: VaultIndex,
-  lane: SprintLane,
-  details: Map<string, SprintTaskDetails>
+  tag: string,
+  details: Map<string, SprintTaskDetails>,
+  lane: SprintLane | 'past'
 ): SprintColumnModel {
-  const members = sprintMembers(index, lane)
+  const members = sprintMembersForTag(index, tag)
   const projectPaths = new Set<string>()
   for (const member of members) {
     if (!member.projectPath) continue
@@ -219,11 +234,19 @@ export function buildSprintColumn(
 
   return {
     lane,
-    tag: tagForLane(lane),
+    tag,
     cardCount: members.length,
     hours: { agent: roundHours(hours.agent), jon: roundHours(hours.jon) },
     logged: roundHours(hours.agent + hours.jon),
     estimate: roundHours(estimate),
     projects
   }
+}
+
+export function buildSprintColumn(
+  index: VaultIndex,
+  lane: SprintLane,
+  details: Map<string, SprintTaskDetails>
+): SprintColumnModel {
+  return buildSprintColumnFromTag(index, tagForLane(lane), details, lane)
 }

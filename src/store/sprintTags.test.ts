@@ -3,10 +3,14 @@ import {
   TAG_SPRINT_CURRENT,
   TAG_SPRINT_NEXT,
   applySprintTag,
+  comparePastSprintTags,
   hoursByActor,
+  pastSprintTag,
+  retagCurrentToPast,
   sprintMembership,
   toggleSprintTag
 } from './sprintTags'
+import { Temporal } from '../dates'
 
 describe('applySprintTag', () => {
   it('adds the current tag and strips the next tag', () => {
@@ -43,6 +47,31 @@ describe('toggleSprintTag', () => {
 
   it('switches from next to current', () => {
     expect(toggleSprintTag([TAG_SPRINT_NEXT], 'current')).toEqual([TAG_SPRINT_CURRENT])
+  })
+})
+
+describe('pastSprintTag', () => {
+  it('uses ISO week-year and a zero-padded week', () => {
+    expect(pastSprintTag(Temporal.PlainDate.from('2026-09-08'))).toBe('sprint-2026-W37')
+    expect(pastSprintTag(Temporal.PlainDate.from('2026-01-01'))).toBe('sprint-2026-W01')
+  })
+})
+
+describe('comparePastSprintTags', () => {
+  it('orders the latest ISO week first', () => {
+    expect(['sprint-2026-W36', 'sprint-2026-W37'].sort(comparePastSprintTags)).toEqual([
+      'sprint-2026-W37',
+      'sprint-2026-W36'
+    ])
+  })
+})
+
+describe('retagCurrentToPast', () => {
+  it('replaces week-sprint and keeps other tags', () => {
+    expect(retagCurrentToPast(['design', TAG_SPRINT_CURRENT], 'sprint-2026-W37')).toEqual([
+      'design',
+      'sprint-2026-W37'
+    ])
   })
 })
 

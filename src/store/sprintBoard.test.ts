@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { makeFakeApp, type FakeVault } from '../../test/fakeVault'
 import { DEFAULT_SETTINGS, type PMSettings } from '../types'
 import { VaultIndex } from './VaultIndex'
-import { buildSprintColumn, detailsFromFrontmatter } from './sprintBoard'
+import { buildSprintColumn, buildSprintColumnFromTag, detailsFromFrontmatter, listPastSprintTags } from './sprintBoard'
 import { TAG_SPRINT_CURRENT } from './sprintTags'
 
 function projectNote(id: string, title: string, extra = ''): string {
@@ -123,5 +123,50 @@ status: todo
     expect(tasks[0].children.map((t) => t.ref.id)).toEqual(['abstract'])
     expect(tasks[0].children[0].estimate).toBe(2)
     expect(tasks.map((t) => t.ref.id)).not.toContain('other')
+  })
+
+  it('reads a past sprint-* tag with the same rollup', async () => {
+    await vault.create('Projects/Research/Research.md', projectNote('research', 'Research'))
+    await vault.create(
+      'Projects/Research/_tasks/closed.md',
+      `---
+pm-task: true
+id: closed
+projectId: research
+title: Closed card
+status: done
+tags:
+  - sprint-2026-W36
+timeEstimate: 1
+---
+
+`
+    )
+    await vault.create(
+      'Projects/Research/_tasks/older.md',
+      `---
+pm-task: true
+id: older
+projectId: research
+title: Older week
+status: done
+tags:
+  - sprint-2026-W35
+---
+
+`
+    )
+    index.build()
+    expect(listPastSprintTags(index)).toEqual(['sprint-2026-W36', 'sprint-2026-W35'])
+    const column = buildSprintColumnFromTag(
+      index,
+      'sprint-2026-W36',
+      new Map([['closed', { timeLogs: [], timeEstimate: 1 }]]),
+      'past'
+    )
+    expect(column.lane).toBe('past')
+    expect(column.tag).toBe('sprint-2026-W36')
+    expect(column.cardCount).toBe(1)
+    expect(column.estimate).toBe(1)
   })
 })

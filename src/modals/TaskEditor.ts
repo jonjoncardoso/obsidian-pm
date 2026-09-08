@@ -12,12 +12,13 @@ import {
 } from 'obsidian'
 import type PMPlugin from '../main'
 import { type Project, type Task, makeTask } from '../types'
-import { flattenTasks } from '../store/TaskTreeOps'
+import { flattenTasks, findTask } from '../store/TaskTreeOps'
 import { TaskFileNameConflictError } from '../store'
 import { safeAsync, getDefaultStatusId, getDefaultPriorityId, getPriorityConfig } from '../utils'
 import { confirmDialog, openTaskByPath } from '../ui/ModalFactory'
 import { addSprintMenuItems } from '../ui/sprintActions'
-import { sprintMembership, toggleSprintTag, type SprintLane } from '../store/sprintTags'
+import { applySprintTag, sprintMembership, toggleSprintTag, type SprintLane } from '../store/sprintTags'
+import { sprintConfirmCopy, sprintTreeSize, writeSprintLane } from '../store/sprintApply'
 import { renderGlyph } from '../ui/composites/properties'
 import { renderTaskFormFields } from './TaskFormFields'
 import { renderTimeTrackingPanel } from './TimeTrackingPanel'
@@ -196,6 +197,35 @@ export class TaskEditor {
     this.host.close()
   }
 
+  private async applySprintLane(lane: SprintLane): Promise<void> {
+    if (this.task.subtasks.length === 0) {
+      this.task.tags = toggleSprintTag(this.task.tags, lane)
+      this.render()
+      return
+    }
+    const adding = sprintMembership(this.task.tags) !== lane
+    const copy = sprintConfirmCopy(adding, lane, sprintTreeSize(this.task))
+    if (!(await confirmDialog(this.app, copy.message, copy.confirmLabel))) return
+    if (this.isNew) {
+      this.task.tags = applySprintTag(this.task.tags, adding ? lane : null)
+      for (const row of flattenTasks(this.task.subtasks)) {
+        row.task.tags = applySprintTag(row.task.tags, adding ? lane : null)
+      }
+      this.render()
+      return
+    }
+    const liveRoot = findTask(this.project.tasks, this.task.id) ?? this.task
+    await writeSprintLane(this.plugin.store, this.project, liveRoot, adding ? lane : null)
+    const live = findTask(this.project.tasks, this.task.id)
+    if (live) {
+      this.task.tags = [...live.tags]
+      this.original.tags = [...live.tags]
+      this.task.subtasks = JSON.parse(JSON.stringify(live.subtasks)) as Task[]
+      this.original.subtasks = JSON.parse(JSON.stringify(live.subtasks)) as Task[]
+    }
+    this.render()
+  }
+
   private mountSprintHeaderButtons(header: HTMLElement): void {
     const membership = sprintMembership(this.task.tags)
     this.mountSprintHeaderButton(header, 'current', membership === 'current' ? 'In sprint' : 'Add to sprint', 'calendar-check')
@@ -206,10 +236,11 @@ export class TaskEditor {
     const btn = new ExtraButtonComponent(header).setIcon(icon).setTooltip(tooltip)
     btn.extraSettingsEl.addClass('pm-te-header-btn')
     if (sprintMembership(this.task.tags) === lane) btn.extraSettingsEl.addClass('is-active')
-    btn.onClick(() => {
-      this.task.tags = toggleSprintTag(this.task.tags, lane)
-      this.render()
-    })
+    btn.onClick(
+      safeAsync(async () => {
+        await this.applySprintLane(lane)
+      })
+    )
   }
 
   private openOverflowMenu(anchorEl: HTMLElement): void {
@@ -245,9 +276,8 @@ export class TaskEditor {
       )
       menu.addSeparator()
     }
-    addSprintMenuItems(menu, this.task.tags, (tags) => {
-      this.task.tags = tags
-      this.render()
+    addSprintMenuItems(menu, this.task.tags, (lane) => {
+      void this.applySprintLane(lane)
     })
     menu.addSeparator()
     if (this.task.archived) {

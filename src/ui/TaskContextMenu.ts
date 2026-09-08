@@ -3,7 +3,7 @@ import type PMPlugin from '../main'
 import type { Task, Project } from '../types'
 import { safeAsync } from '../utils'
 import { openTaskModal, confirmDialog, confirmDuplicateSubtasks, openProjectPicker } from './ModalFactory'
-import { addSprintMenuItems } from './sprintActions'
+import { addSprintMenuItems, applySprintLaneForTask } from './sprintActions'
 
 export interface TaskMenuContext {
   plugin: PMPlugin
@@ -80,10 +80,9 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
       })
   )
   menu.addSeparator()
-  addSprintMenuItems(menu, task.tags, (tags) => {
+  addSprintMenuItems(menu, task.tags, (lane) => {
     void (async () => {
-      await ctx.plugin.store.updateTask(ctx.project, task.id, { tags })
-      await ctx.onRefresh()
+      if (await applySprintLaneForTask(ctx.plugin, ctx.project, task, lane)) await ctx.onRefresh()
     })()
   })
   menu.addSeparator()

@@ -29,28 +29,40 @@ export function addPaletteMenuItem(
   })
 }
 
-export function renderStatusBadge(
+export function renderStatusBadgeFromId(
   container: HTMLElement,
-  task: Task,
+  status: string,
   statuses: StatusConfig[],
-  onChange: (status: TaskStatus) => void
+  onChange: (status: TaskStatus) => void,
+  size: 'md' | 'sm' = 'md'
 ): HTMLElement {
-  const config = getStatusConfig(statuses, task.status)
+  const config = getStatusConfig(statuses, status)
   const badge = new Chip(container)
-    .setLabel(formatBadgeText(config?.icon, config?.label ?? task.status))
+    .setLabel(formatBadgeText(config?.icon, config?.label ?? status))
     .setColor(config?.color ?? 'var(--text-muted)')
     .setVariant('solid')
     .setDot(!config?.icon)
+    .setSize(size)
     .onClick((e) => {
+      e.stopPropagation()
       const menu = new Menu()
       for (const s of statuses) {
-        addPaletteMenuItem(menu, s, { checked: s.id === task.status, onClick: () => onChange(s.id) })
+        addPaletteMenuItem(menu, s, { checked: s.id === status, onClick: () => onChange(s.id) })
       }
       menu.showAtMouseEvent(e)
     })
   const icon = namedIcon(config)
   if (icon) badge.setLeadingIcon(icon)
   return badge.el
+}
+
+export function renderStatusBadge(
+  container: HTMLElement,
+  task: Task,
+  statuses: StatusConfig[],
+  onChange: (status: TaskStatus) => void
+): HTMLElement {
+  return renderStatusBadgeFromId(container, task.status, statuses, onChange)
 }
 
 export function renderPriorityBadge(

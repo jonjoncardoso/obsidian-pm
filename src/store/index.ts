@@ -45,11 +45,30 @@ export {
   TAG_SPRINT_NEXT,
   applySprintTag,
   hoursByActor,
+  isPastSprintTag,
+  pastSprintTag,
+  retagCurrentToPast,
   sprintMembership,
   toggleSprintTag
 } from './sprintTags'
 export type { SprintLane } from './sprintTags'
-export { buildSprintColumn, detailsFromFrontmatter, sprintMembers, tagForLane } from './sprintBoard'
+export {
+  closeWeekConfirmCopy,
+  sprintConfirmCopy,
+  sprintLaneLabel,
+  sprintTreeSize,
+  writeCloseWeek,
+  writeSprintLane
+} from './sprintApply'
+export {
+  buildSprintColumn,
+  buildSprintColumnFromTag,
+  detailsFromFrontmatter,
+  listPastSprintTags,
+  sprintMembers,
+  sprintMembersForTag,
+  tagForLane
+} from './sprintBoard'
 export type { SprintColumnModel, SprintProjectNode, SprintTaskDetails, SprintTaskNode } from './sprintBoard'
 export {
   createPersonLink,
