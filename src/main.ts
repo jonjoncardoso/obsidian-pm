@@ -8,6 +8,7 @@ import { ProjectView, PM_PROJECT_VIEW_TYPE } from './views/ProjectView'
 import { ProjectOverviewView, PM_PROJECT_OVERVIEW_VIEW_TYPE } from './views/ProjectOverviewView'
 import { ProjectEditView, PM_PROJECT_EDIT_VIEW_TYPE } from './views/ProjectEditView'
 import { DashboardView, PM_DASHBOARD_VIEW_TYPE } from './views/DashboardView'
+import { SprintView, PM_SPRINT_VIEW_TYPE } from './views/SprintView'
 import { TaskView, PM_TASK_VIEW_TYPE } from './views/TaskView'
 import { registerStyleguide } from './views/styleguide/StyleguideView'
 import { PMViewRouter } from './views/PMViewRouter'
@@ -82,6 +83,7 @@ export default class PMPlugin extends Plugin {
     this.registerView(PM_PROJECT_OVERVIEW_VIEW_TYPE, (leaf) => new ProjectOverviewView(leaf, this))
     this.registerView(PM_PROJECT_EDIT_VIEW_TYPE, (leaf) => new ProjectEditView(leaf, this))
     this.registerView(PM_DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this))
+    this.registerView(PM_SPRINT_VIEW_TYPE, (leaf) => new SprintView(leaf, this))
     this.registerView(PM_TASK_VIEW_TYPE, (leaf) => new TaskView(leaf, this))
     this.registerTaskNoteSwap()
     if (__STYLEGUIDE__) registerStyleguide(this)
@@ -102,6 +104,14 @@ export default class PMPlugin extends Plugin {
       name: 'Open projects pane',
       callback: () => {
         void this.router.openDashboard()
+      }
+    })
+
+    this.addCommand({
+      id: 'open-sprint',
+      name: 'Open sprint pane',
+      callback: () => {
+        void this.router.openSprint()
       }
     })
 
@@ -505,6 +515,9 @@ export default class PMPlugin extends Plugin {
       }
       for (const leaf of this.app.workspace.getLeavesOfType(PM_DASHBOARD_VIEW_TYPE)) {
         if (leaf.view instanceof DashboardView) leaf.view.render()
+      }
+      for (const leaf of this.app.workspace.getLeavesOfType(PM_SPRINT_VIEW_TYPE)) {
+        if (leaf.view instanceof SprintView) void leaf.view.render()
       }
     }, 0)
   }

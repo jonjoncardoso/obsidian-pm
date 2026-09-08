@@ -35,7 +35,11 @@ export function renderProjectListToolbar(ctx: ProjectListContext): void {
   const line = countLine(ctx)
   if (line) left.createSpan({ cls: 'pm-project-list-count', text: line })
 
-  new ButtonComponent(ctx.toolbarEl)
+  const right = ctx.toolbarEl.createDiv('pm-toolbar-right')
+  new ButtonComponent(right).setButtonText('Sprint').onClick(() => {
+    void ctx.plugin.router.openSprint()
+  })
+  new ButtonComponent(right)
     .setButtonText('+ new project')
     .setCta()
     .onClick(() => openProjectCreate(ctx.plugin))

@@ -29,7 +29,11 @@ function taskRef(id: string, projectPath: string): TaskRef {
     assignees: [],
     archived: false,
     timeEstimate: undefined,
-    loggedHours: 0
+    loggedHours: 0,
+    createdAt: 0,
+    lastEdited: 0,
+    tags: [],
+    parentId: ''
   }
 }
 

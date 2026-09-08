@@ -54,6 +54,8 @@ export interface TaskRef {
   createdAt: number
   /** File last-modified time (epoch ms), from the vault file's own stat. */
   lastEdited: number
+  tags: string[]
+  parentId: string
 }
 
 function str(raw: unknown, fallback = ''): string {
@@ -546,7 +548,9 @@ export class VaultIndex {
       timeEstimate: timeEstimateOf(frontmatter),
       loggedHours: loggedHoursOf(frontmatter),
       createdAt: createdAtOf(frontmatter, file),
-      lastEdited: lastEditedOf(frontmatter, file)
+      lastEdited: lastEditedOf(frontmatter, file),
+      tags: stringList(frontmatter.tags),
+      parentId: str(frontmatter.parentId)
     }
     this.tasks.set(path, ref)
     this.taskById.set(ref.id, ref)

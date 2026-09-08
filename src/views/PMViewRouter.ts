@@ -2,6 +2,7 @@ import { TFile, type WorkspaceLeaf } from 'obsidian'
 import type PMPlugin from '../main'
 import type { ScopeSpec } from '../store'
 import { PM_DASHBOARD_VIEW_TYPE } from './DashboardView'
+import { PM_SPRINT_VIEW_TYPE } from './SprintView'
 import { PM_PROJECT_EDIT_VIEW_TYPE } from './ProjectEditView'
 import { PM_PROJECT_OVERVIEW_VIEW_TYPE } from './ProjectOverviewView'
 import { PM_PROJECT_VIEW_TYPE } from './ProjectView'
@@ -20,6 +21,10 @@ export class PMViewRouter {
 
   async openDashboard(): Promise<void> {
     await this.open(PM_DASHBOARD_VIEW_TYPE, {})
+  }
+
+  async openSprint(): Promise<void> {
+    await this.open(PM_SPRINT_VIEW_TYPE, {})
   }
 
   async openProject(file: TFile): Promise<void> {

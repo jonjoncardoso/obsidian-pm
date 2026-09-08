@@ -14,9 +14,9 @@ function projectNote(id: string, title: string, extra = ''): string {
   return `---\npm-project: true\nid: ${id}\ntitle: ${title}\n${extra}---\n\n# ${title}\n`
 }
 
-function taskNote(id: string, title: string, projectId: string, status = 'todo', due = ''): string {
+function taskNote(id: string, title: string, projectId: string, status = 'todo', due = '', extra = ''): string {
   const dueLine = due ? `due: ${due}\n` : ''
-  return `---\npm-task: true\nid: ${id}\nprojectId: ${projectId}\ntitle: ${title}\nstatus: ${status}\n${dueLine}---\n\n`
+  return `---\npm-task: true\nid: ${id}\nprojectId: ${projectId}\ntitle: ${title}\nstatus: ${status}\n${dueLine}${extra}---\n\n`
 }
 
 function taskNoteWithHours(
@@ -484,5 +484,26 @@ describe('VaultIndex id collisions', () => {
 
     expect(index.findTaskIdCollisions().size).toBe(0)
     expect(index.findProjectIdCollisions().size).toBe(0)
+  })
+
+  it('indexes task tags and parentId from frontmatter', async () => {
+    await vault.create('Projects/Roadmap.md', projectNote('p1', 'Roadmap'))
+    await vault.create(
+      'Projects/Roadmap_tasks/parent.md',
+      taskNote('parent-1', 'Parent', 'p1', 'todo', '', 'tags:\n  - week-sprint\n')
+    )
+    await vault.create(
+      'Projects/Roadmap_tasks/child.md',
+      taskNote('child-1', 'Child', 'p1', 'done', '', 'tags:\n  - week-sprint\nparentId: parent-1\n')
+    )
+    index.build()
+
+    const parent = expectDefined(index.task('parent-1'))
+    const child = expectDefined(index.task('child-1'))
+    expect(parent.tags).toEqual(['week-sprint'])
+    expect(parent.parentId).toBe('')
+    expect(child.tags).toEqual(['week-sprint'])
+    expect(child.parentId).toBe('parent-1')
+    expect(child.status).toBe('done')
   })
 })

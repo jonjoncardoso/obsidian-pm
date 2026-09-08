@@ -3,6 +3,7 @@ import type PMPlugin from '../main'
 import type { Task, Project } from '../types'
 import { safeAsync } from '../utils'
 import { openTaskModal, confirmDialog, confirmDuplicateSubtasks, openProjectPicker } from './ModalFactory'
+import { addSprintMenuItems } from './sprintActions'
 
 export interface TaskMenuContext {
   plugin: PMPlugin
@@ -10,7 +11,7 @@ export interface TaskMenuContext {
   onRefresh: () => Promise<void>
 }
 
-/** Edit, Add subtask, Archive/Unarchive, Delete. */
+/** Edit, Add subtask, sprint membership, Archive/Unarchive, Delete. */
 export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContext): Menu {
   menu.addItem((item) =>
     item
@@ -78,6 +79,13 @@ export function buildTaskContextMenu(menu: Menu, task: Task, ctx: TaskMenuContex
         )
       })
   )
+  menu.addSeparator()
+  addSprintMenuItems(menu, task.tags, (tags) => {
+    void (async () => {
+      await ctx.plugin.store.updateTask(ctx.project, task.id, { tags })
+      await ctx.onRefresh()
+    })()
+  })
   menu.addSeparator()
   if (task.archived) {
     menu.addItem((item) =>

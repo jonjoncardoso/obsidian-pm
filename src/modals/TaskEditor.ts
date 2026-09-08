@@ -16,6 +16,8 @@ import { flattenTasks } from '../store/TaskTreeOps'
 import { TaskFileNameConflictError } from '../store'
 import { safeAsync, getDefaultStatusId, getDefaultPriorityId, getPriorityConfig } from '../utils'
 import { confirmDialog, openTaskByPath } from '../ui/ModalFactory'
+import { addSprintMenuItems } from '../ui/sprintActions'
+import { sprintMembership, toggleSprintTag, type SprintLane } from '../store/sprintTags'
 import { renderGlyph } from '../ui/composites/properties'
 import { renderTaskFormFields } from './TaskFormFields'
 import { renderTimeTrackingPanel } from './TimeTrackingPanel'
@@ -194,6 +196,22 @@ export class TaskEditor {
     this.host.close()
   }
 
+  private mountSprintHeaderButtons(header: HTMLElement): void {
+    const membership = sprintMembership(this.task.tags)
+    this.mountSprintHeaderButton(header, 'current', membership === 'current' ? 'In sprint' : 'Add to sprint', 'calendar-check')
+    this.mountSprintHeaderButton(header, 'next', membership === 'next' ? 'In next sprint' : 'Add to next sprint', 'calendar-plus')
+  }
+
+  private mountSprintHeaderButton(header: HTMLElement, lane: SprintLane, tooltip: string, icon: string): void {
+    const btn = new ExtraButtonComponent(header).setIcon(icon).setTooltip(tooltip)
+    btn.extraSettingsEl.addClass('pm-te-header-btn')
+    if (sprintMembership(this.task.tags) === lane) btn.extraSettingsEl.addClass('is-active')
+    btn.onClick(() => {
+      this.task.tags = toggleSprintTag(this.task.tags, lane)
+      this.render()
+    })
+  }
+
   private openOverflowMenu(anchorEl: HTMLElement): void {
     const menu = new Menu()
     if (this.task.filePath) {
@@ -227,6 +245,11 @@ export class TaskEditor {
       )
       menu.addSeparator()
     }
+    addSprintMenuItems(menu, this.task.tags, (tags) => {
+      this.task.tags = tags
+      this.render()
+    })
+    menu.addSeparator()
     if (this.task.archived) {
       menu.addItem((item) =>
         item
@@ -306,6 +329,7 @@ export class TaskEditor {
     header.createDiv('pm-te-header-spacer')
 
     if (!this.isNew) {
+      this.mountSprintHeaderButtons(header)
       const moreBtn = new ExtraButtonComponent(header).setIcon('more-horizontal').setTooltip('More actions')
       moreBtn.extraSettingsEl.addClass('pm-te-header-btn')
       moreBtn.onClick(() => this.openOverflowMenu(moreBtn.extraSettingsEl))

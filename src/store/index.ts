@@ -41,6 +41,17 @@ export type { ScopeSpec } from './ProjectScope'
 export { VaultIndex } from './VaultIndex'
 export type { ProjectRef, TaskRef } from './VaultIndex'
 export {
+  TAG_SPRINT_CURRENT,
+  TAG_SPRINT_NEXT,
+  applySprintTag,
+  hoursByActor,
+  sprintMembership,
+  toggleSprintTag
+} from './sprintTags'
+export type { SprintLane } from './sprintTags'
+export { buildSprintColumn, detailsFromFrontmatter, sprintMembers, tagForLane } from './sprintBoard'
+export type { SprintColumnModel, SprintProjectNode, SprintTaskDetails, SprintTaskNode } from './sprintBoard'
+export {
   createPersonLink,
   createPersonNote,
   matchPersonNotes,
