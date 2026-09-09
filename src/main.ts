@@ -98,6 +98,7 @@ export default class PMPlugin extends Plugin {
     this.addRibbonIcon('chart-gantt', 'Project manager', async () => {
       await this.router.openDashboard()
     })
+    this.notifier.attachStatusBar(this.addStatusBarItem())
 
     this.addCommand({
       id: 'open-projects',
@@ -326,6 +327,7 @@ export default class PMPlugin extends Plugin {
     if (!this.settings.collapsedTasks) this.settings.collapsedTasks = {}
     if (!this.settings.collapsedProjects) this.settings.collapsedProjects = []
     if (!this.settings.overviewCollapsedGroups) this.settings.overviewCollapsedGroups = {}
+    if (!this.settings.notificationMutes) this.settings.notificationMutes = {}
     if (this.settings.overviewHideDone == null) this.settings.overviewHideDone = false
     if (!this.settings.excludedFolders) this.settings.excludedFolders = []
 

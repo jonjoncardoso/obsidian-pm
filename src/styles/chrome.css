@@ -219,3 +219,89 @@
   font-size: var(--font-ui-smaller);
   color: var(--text-muted);
 }
+
+.pm-notice-dock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.pm-notice-dock-icon {
+  display: inline-flex;
+  --icon-size: 14px;
+}
+
+.pm-notice-dock-count {
+  font-size: var(--font-ui-smaller);
+}
+
+.pm-notice-dock-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pm-notice-dock-row .pm-pop-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.pm-notice-dock-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pm-notice-dock-due {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.pm-notice-dock-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  --icon-size: 14px;
+}
+
+.pm-notice-dock-dismiss:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.pm-due-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  --pm-glyph-size: 16px;
+}
+
+.pm-due-notice-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pm-due-notice-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pm-due-notice-due {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.pm-due-notice--overdue .pm-due-notice-due {
+  color: var(--text-error);
+}
