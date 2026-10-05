@@ -141,11 +141,14 @@ export class SprintView extends ItemView {
     const line = parent.createDiv('pm-sprint-summary')
     const bits = [
       `${current.cardCount} ${current.cardCount === 1 ? 'card' : 'cards'}`,
-      `${current.logged}h / ${current.estimate}h planned`,
-      `agent ${current.hours.agent}h`,
-      `Jon ${current.hours.jon}h`
+      this.hoursMeta(current)
     ]
     line.setText(`This week · ${bits.join(' · ')}`)
+  }
+
+  /** Agent hours, Jon hours, then the estimate: `6.7h (agent) / 3.9h (Jon) / 8.3h`. */
+  private hoursMeta(model: SprintColumnModel): string {
+    return `${model.hours.agent}h (agent) / ${model.hours.jon}h (Jon) / ${model.estimate}h`
   }
 
   private renderColumn(parent: HTMLElement, model: SprintColumnModel, title: string): void {
@@ -154,7 +157,7 @@ export class SprintView extends ItemView {
     header.createEl('h3', { text: title, cls: 'pm-sprint-col-title' })
     header.createSpan({
       cls: 'pm-sprint-col-meta',
-      text: `${model.cardCount} cards · ${model.logged} / ${model.estimate}h`
+      text: `${model.cardCount} cards · ${this.hoursMeta(model)}`
     })
     this.renderColumnBody(col, model)
   }
@@ -191,7 +194,7 @@ export class SprintView extends ItemView {
     head.createSpan({ cls: 'pm-sprint-past-group-title', text: model.tag })
     head.createSpan({
       cls: 'pm-sprint-col-meta',
-      text: `${model.cardCount} cards · ${model.logged} / ${model.estimate}h`
+      text: `${model.cardCount} cards · ${this.hoursMeta(model)}`
     })
     head.addEventListener('click', () => this.togglePastGroup(model.tag))
     if (collapsed) return
