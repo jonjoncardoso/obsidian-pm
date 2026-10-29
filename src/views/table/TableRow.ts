@@ -1,7 +1,7 @@
 import { Menu, type App } from 'obsidian'
 import { getStatusConfig, dueUrgency, isTerminalStatus, safeAsync, stringifyCustomValue } from '../../utils'
 import type { CustomFieldDef } from '../../types'
-import { subtreeLoggedHours, subtreeTimeEstimate } from '../../store/TaskTreeOps'
+import { subtreeDue, subtreeLoggedHours, subtreeProgress, subtreeTimeEstimate } from '../../store/TaskTreeOps'
 import { updateSelectCheckboxes, getVisibleTaskIds } from './TableRenderer'
 import type { TableContext, TableState, TableTreeRow } from './TableRenderer'
 import { openTaskModal } from '../../ui/ModalFactory'
@@ -29,6 +29,8 @@ export function renderTaskRow(tbody: HTMLElement, flat: TableTreeRow, ctx: Table
   if (!project) return
   const isDone = isTerminalStatus(task.status, ctx.scope.configOf(task.id).statuses)
   const statusConfig = getStatusConfig(ctx.statuses, task.status)
+  // Parent rows show due and progress rolled up from their subtasks.
+  const shown = { ...task, due: subtreeDue(task), progress: subtreeProgress(task, ctx.scope.configOf(task.id).statuses) }
 
   const { el: row } = new TaskRow(tbody, {
     taskId: task.id,
@@ -135,8 +137,8 @@ export function renderTaskRow(tbody: HTMLElement, flat: TableTreeRow, ctx: Table
   new AssigneesCell(row, linkedRefs(ctx.plugin.app, task.assignees, task.filePath ?? project.filePath))
 
   new DueDateCell(row, {
-    task,
-    urgency: dueUrgency(task, ctx.statuses),
+    task: shown,
+    urgency: dueUrgency(shown, ctx.statuses),
     onSave: async (val) => {
       await ctx.plugin.store.updateTask(project, task.id, { due: val })
       await ctx.plugin.store.scheduleAfterChange(project, task.id)
@@ -145,7 +147,7 @@ export function renderTaskRow(tbody: HTMLElement, flat: TableTreeRow, ctx: Table
   })
 
   new ProgressCell(row, {
-    value: task.progress,
+    value: shown.progress,
     color: statusConfig?.color ?? 'var(--interactive-accent)',
     onSave: async (progress) => {
       await ctx.plugin.store.updateTask(project, task.id, { progress })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { makeTask, type Task } from '../types'
+import { makeTask, type StatusConfig, type Task } from '../types'
 import {
   addTaskToTree,
   collectAllAssignees,
@@ -9,6 +9,9 @@ import {
   findTask,
   flattenTasks,
   moveTaskInTree,
+  subtreeDue,
+  subtreeProgress,
+  subtreeStart,
   totalLoggedHours,
   updateTaskInTree
 } from './TaskTreeOps'
@@ -211,5 +214,67 @@ describe('totalLoggedHours', () => {
       ]
     })
     expect(totalLoggedHours(t)).toBe(5.5)
+  })
+})
+
+describe('subtree date and progress rollups', () => {
+  const statuses = [
+    { id: 'todo', label: 'To Do', color: '', icon: '', complete: false },
+    { id: 'done', label: 'Done', color: '', icon: '', complete: true },
+    { id: 'cancelled', label: 'Cancelled', color: '', icon: '', complete: true }
+  ] as StatusConfig[]
+
+  it('takes the latest due date among live subtasks and skips cancelled ones', () => {
+    const parent = task({
+      id: 'p',
+      subtasks: [
+        task({ id: 'a', due: '2026-10-30' }),
+        task({ id: 'b', due: '2026-11-05' }),
+        task({ id: 'c', due: '2026-12-01', status: 'cancelled' })
+      ]
+    })
+    expect(subtreeDue(parent)).toBe('2026-11-05')
+  })
+
+  it('reads due dates from grandchildren', () => {
+    const parent = task({
+      id: 'p',
+      subtasks: [task({ id: 'a', subtasks: [task({ id: 'a1', due: '2026-11-20' })] })]
+    })
+    expect(subtreeDue(parent)).toBe('2026-11-20')
+  })
+
+  it('falls back to the parent due when no subtask has one', () => {
+    const parent = task({ id: 'p', due: '2026-10-31', subtasks: [task({ id: 'a' })] })
+    expect(subtreeDue(parent)).toBe('2026-10-31')
+  })
+
+  it('takes the earliest non-empty start date, or blank when none is set', () => {
+    const dated = task({
+      id: 'p',
+      subtasks: [task({ id: 'a', start: '2026-10-20' }), task({ id: 'b' }), task({ id: 'c', start: '2026-10-12' })]
+    })
+    expect(subtreeStart(dated)).toBe('2026-10-12')
+    const blank = task({ id: 'q', start: '', subtasks: [task({ id: 'a', start: '' })] })
+    expect(subtreeStart(blank)).toBe('')
+  })
+
+  it('counts the share of live subtasks that are done', () => {
+    const parent = task({
+      id: 'p',
+      subtasks: [
+        task({ id: 'a', status: 'done' }),
+        task({ id: 'b', status: 'todo' }),
+        task({ id: 'c', status: 'todo' }),
+        task({ id: 'd', status: 'cancelled' })
+      ]
+    })
+    expect(subtreeProgress(parent, statuses)).toBe(33)
+  })
+
+  it('keeps the task progress when it has no live subtasks', () => {
+    expect(subtreeProgress(task({ id: 'leaf', progress: 40 }), statuses)).toBe(40)
+    const allCancelled = task({ id: 'p', progress: 10, subtasks: [task({ id: 'a', status: 'cancelled' })] })
+    expect(subtreeProgress(allCancelled, statuses)).toBe(10)
   })
 })

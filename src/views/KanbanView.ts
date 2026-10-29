@@ -2,7 +2,7 @@ import { Menu } from 'obsidian'
 import type PMPlugin from '../main'
 import type { Task, TaskStatus, FilterState, ResolvedProjectConfig } from '../types'
 import { personKeyer, type ProjectScope } from '../store'
-import { flattenTasks, subtreeLoggedHours, subtreeTimeEstimate } from '../store/TaskTreeOps'
+import { flattenTasks, subtreeDue, subtreeLoggedHours, subtreeProgress, subtreeTimeEstimate } from '../store/TaskTreeOps'
 import { matchesFilter } from '../store/TaskFilter'
 import { displayName, dueUrgency, getPriorityConfig, safeAsync } from '../utils'
 import { openTaskModal } from '../ui/ModalFactory'
@@ -108,8 +108,10 @@ export class KanbanView implements SubView {
 
     const owner = this.scope.isMulti ? this.scope.projectOf(task.id) : null
 
+    // Parent cards show due and progress rolled up from their subtasks.
+    const shown = { ...task, due: subtreeDue(task), progress: subtreeProgress(task, this.config.statuses) }
     return {
-      task,
+      task: shown,
       people: linkedRefs(this.plugin.app, task.assignees, task.filePath ?? ''),
       priorityColor,
       descriptionPreview,
@@ -124,7 +126,7 @@ export class KanbanView implements SubView {
         : undefined,
       loggedHours: subtreeLoggedHours(task),
       estimateHours: subtreeTimeEstimate(task),
-      overdue: dueUrgency(task, this.config.statuses) === 'overdue',
+      overdue: dueUrgency(shown, this.config.statuses) === 'overdue',
       showTagColors: this.plugin.settings.showTagColors
     }
   }

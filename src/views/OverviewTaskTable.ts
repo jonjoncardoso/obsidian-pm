@@ -1,6 +1,6 @@
 import type PMPlugin from '../main'
 import type { Project, Task } from '../types'
-import { flattenTasks, type FlatTask, subtreeLoggedHours, subtreeTimeEstimate } from '../store/TaskTreeOps'
+import { flattenTasks, type FlatTask, subtreeDue, subtreeLoggedHours, subtreeProgress, subtreeTimeEstimate } from '../store/TaskTreeOps'
 import { isTerminalStatus, getStatusConfig, dueUrgency, safeAsync } from '../utils'
 import { openTaskModal } from '../ui/ModalFactory'
 import { TaskRow } from '../ui/composites/TaskRow'
@@ -157,6 +157,8 @@ function renderProjectRows(
     const { task } = row
     const isDone = isTerminalStatus(task.status, statuses)
     const statusConfig = getStatusConfig(statuses, task.status)
+    // Parent rows show due and progress rolled up from their subtasks.
+    const shown = { ...task, due: subtreeDue(task), progress: subtreeProgress(task, statuses) }
 
     new TaskRow(tbody, {
       taskId: task.id,
@@ -199,13 +201,13 @@ function renderProjectRows(
     new AssigneesCell(tr, linkedRefs(plugin.app, task.assignees, task.filePath ?? project.filePath))
 
     new DueDateCell(tr, {
-      task,
-      urgency: dueUrgency(task, statuses),
+      task: shown,
+      urgency: dueUrgency(shown, statuses),
       onSave: async () => {}
     })
 
     new ProgressCell(tr, {
-      value: task.progress,
+      value: shown.progress,
       color: statusConfig?.color ?? 'var(--interactive-accent)',
       onSave: async () => {}
     })

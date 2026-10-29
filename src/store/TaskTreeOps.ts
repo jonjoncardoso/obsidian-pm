@@ -1,6 +1,6 @@
-import type { Task } from '../types'
+import type { StatusConfig, Task } from '../types'
 import { makeId } from '../types'
-import { dedupePeople } from '../utils'
+import { dedupePeople, isTerminalStatus } from '../utils'
 
 export interface FlatTask {
   task: Task
@@ -194,4 +194,48 @@ export function subtreeTimeEstimate(task: Task): number {
     childSum += est
   }
   return anyChildEstimate ? childSum : (task.timeEstimate ?? 0)
+}
+
+const CANCELLED_STATUS = 'cancelled'
+
+function liveSubtasks(task: Task): Task[] {
+  return task.subtasks.filter((child) => child.status !== CANCELLED_STATUS)
+}
+
+/**
+ * Latest due date (YYYY-MM-DD) across a task's non-cancelled descendants.
+ * When no live subtask carries a due date, fall back to the task's own due,
+ * as subtreeTimeEstimate does for hours.
+ */
+export function subtreeDue(task: Task): string {
+  let latest = ''
+  for (const child of liveSubtasks(task)) {
+    const due = subtreeDue(child)
+    if (due > latest) latest = due
+  }
+  return latest || task.due
+}
+
+/**
+ * Earliest start date (YYYY-MM-DD) across a task's non-cancelled descendants,
+ * falling back to the task's own start when no live subtask has one.
+ */
+export function subtreeStart(task: Task): string {
+  let earliest = ''
+  for (const child of liveSubtasks(task)) {
+    const start = subtreeStart(child)
+    if (start && (!earliest || start < earliest)) earliest = start
+  }
+  return earliest || task.start
+}
+
+/**
+ * Share of a task's non-cancelled direct subtasks whose status is complete,
+ * as a whole percentage. A task with no live subtasks keeps its own progress.
+ */
+export function subtreeProgress(task: Task, statuses: StatusConfig[]): number {
+  const live = liveSubtasks(task)
+  if (live.length === 0) return task.progress
+  const done = live.filter((child) => isTerminalStatus(child.status, statuses)).length
+  return Math.round((done / live.length) * 100)
 }
