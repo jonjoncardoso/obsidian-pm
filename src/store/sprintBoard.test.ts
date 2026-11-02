@@ -3,25 +3,37 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { makeFakeApp, type FakeVault } from '../../test/fakeVault'
 import { DEFAULT_SETTINGS, type PMSettings } from '../types'
 import { VaultIndex } from './VaultIndex'
-import { buildSprintColumn, buildSprintColumnFromTag, detailsFromFrontmatter, listPastSprintTags } from './sprintBoard'
-import { TAG_SPRINT_CURRENT } from './sprintTags'
+import {
+  buildEisenhowerMatrix,
+  buildSprintColumn,
+  buildSprintColumnFromTag,
+  detailsFromFrontmatter,
+  listPastSprintTags
+} from './sprintBoard'
+import { TAG_SPRINT_CURRENT, TAG_SPRINT_NEXT } from './sprintTags'
 
 function projectNote(id: string, title: string, extra = ''): string {
   return `---\npm-project: true\nid: ${id}\ntitle: ${title}\n${extra}---\n\n# ${title}\n`
 }
 
 describe('detailsFromFrontmatter', () => {
-  it('reads timeLogs and timeEstimate', () => {
+  it('reads timeLogs, timeEstimate, and urgency', () => {
     const details = detailsFromFrontmatter({
       timeEstimate: 2,
-      timeLogs: [{ date: '2026-09-07', hours: 1, note: 'agent: work' }]
+      timeLogs: [{ date: '2026-09-07', hours: 1, note: 'agent: work' }],
+      customFields: { urgency: 'High' }
     })
     expect(details.timeEstimate).toBe(2)
     expect(details.timeLogs).toEqual([{ date: '2026-09-07', hours: 1, note: 'agent: work' }])
+    expect(details.urgency).toBe('High')
   })
 
   it('returns empty details when frontmatter is missing', () => {
-    expect(detailsFromFrontmatter(undefined)).toEqual({ timeLogs: [], timeEstimate: undefined })
+    expect(detailsFromFrontmatter(undefined)).toEqual({
+      timeLogs: [],
+      timeEstimate: undefined,
+      urgency: undefined
+    })
   })
 })
 
@@ -104,10 +116,11 @@ status: todo
             { date: '2026-09-07', hours: 1, note: 'agent: full reader-model read' },
             { date: '2026-09-07', hours: 0.5, note: 'Jon: guided voice corrections' }
           ],
-          timeEstimate: undefined
+          timeEstimate: undefined,
+          urgency: undefined
         }
       ],
-      ['abstract', { timeLogs: [], timeEstimate: 2 }]
+      ['abstract', { timeLogs: [], timeEstimate: 2, urgency: undefined }]
     ])
 
     const column = buildSprintColumn(index, 'current', details)
@@ -166,7 +179,7 @@ tags:
     const column = buildSprintColumnFromTag(
       index,
       'sprint-2026-W36',
-      new Map([['closed', { timeLogs: [], timeEstimate: 1 }]]),
+      new Map([['closed', { timeLogs: [], timeEstimate: 1, urgency: undefined }]]),
       'past'
     )
     expect(column.lane).toBe('past')
@@ -175,5 +188,109 @@ tags:
     expect(column.estimate).toBe(1)
     expect(column.projects[0].logged).toBe(0)
     expect(column.projects[0].estimate).toBe(1)
+  })
+})
+
+describe('buildEisenhowerMatrix', () => {
+  let vault: FakeVault
+  let app: App
+  let settings: PMSettings
+  let index: VaultIndex
+
+  beforeEach(() => {
+    const fake = makeFakeApp({ liveMetadataCache: true })
+    vault = fake.vault
+    app = fake.app as unknown as App
+    settings = { ...DEFAULT_SETTINGS }
+    index = new VaultIndex(app, () => settings)
+  })
+
+  it('buckets live sprint cards by derived quadrant and leaves unset urgency unsorted', async () => {
+    await vault.create('Projects/Research/Research.md', projectNote('research', 'Research'))
+    await vault.create(
+      'Projects/Research/_tasks/do-now.md',
+      `---
+pm-task: true
+id: do-now
+projectId: research
+title: Do now
+status: todo
+priority: high
+tags:
+  - ${TAG_SPRINT_CURRENT}
+customFields:
+  urgency: High
+---
+
+`
+    )
+    await vault.create(
+      'Projects/Research/_tasks/schedule.md',
+      `---
+pm-task: true
+id: schedule
+projectId: research
+title: Schedule
+status: todo
+priority: high
+tags:
+  - ${TAG_SPRINT_NEXT}
+customFields:
+  urgency: Medium
+---
+
+`
+    )
+    await vault.create(
+      'Projects/Research/_tasks/delegate.md',
+      `---
+pm-task: true
+id: delegate
+projectId: research
+title: Delegate
+status: todo
+priority: medium
+tags:
+  - ${TAG_SPRINT_CURRENT}
+customFields:
+  urgency: Medium
+---
+
+`
+    )
+    await vault.create(
+      'Projects/Research/_tasks/unsorted.md',
+      `---
+pm-task: true
+id: unsorted
+projectId: research
+title: No urgency
+status: todo
+priority: high
+tags:
+  - ${TAG_SPRINT_CURRENT}
+---
+
+`
+    )
+    index.build()
+
+    const details = new Map([
+      ['do-now', { timeLogs: [], timeEstimate: undefined, urgency: 'High' }],
+      ['schedule', { timeLogs: [], timeEstimate: undefined, urgency: 'Medium' }],
+      ['delegate', { timeLogs: [], timeEstimate: undefined, urgency: 'Medium' }],
+      ['unsorted', { timeLogs: [], timeEstimate: undefined, urgency: undefined }]
+    ])
+
+    const matrix = buildEisenhowerMatrix(index, details)
+    expect(matrix.quadrants.I.cardCount).toBe(1)
+    expect(matrix.quadrants.I.projects[0].tasks.map((t) => t.ref.id)).toEqual(['do-now'])
+    expect(matrix.quadrants.II.cardCount).toBe(1)
+    expect(matrix.quadrants.II.projects[0].tasks.map((t) => t.ref.id)).toEqual(['schedule'])
+    expect(matrix.quadrants.III.cardCount).toBe(1)
+    expect(matrix.quadrants.III.projects[0].tasks.map((t) => t.ref.id)).toEqual(['delegate'])
+    expect(matrix.quadrants.IV.cardCount).toBe(0)
+    expect(matrix.unsorted.cardCount).toBe(1)
+    expect(matrix.unsorted.projects[0].tasks.map((t) => t.ref.id)).toEqual(['unsorted'])
   })
 })

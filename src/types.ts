@@ -6,6 +6,9 @@ export type TaskPriority = string
 export type GanttGranularity = 'day' | 'week' | 'month' | 'quarter' | 'year'
 export type GanttWeekLabel = 'weekNumber' | 'dateRange' | 'both'
 export type ViewMode = 'table' | 'gantt' | 'kanban'
+export type SprintViewMode = 'list' | 'matrix'
+/** Matrix card layout: project tree with collapses, or flat rows with path chips. */
+export type SprintMatrixLayout = 'tree' | 'flat'
 export type LineBorders = 'none' | 'horizontal' | 'vertical' | 'both'
 export type DueDateFilter = 'any' | 'overdue' | 'this-week' | 'this-month' | 'no-date'
 export type TaskType = 'task' | 'milestone' | 'subtask'
@@ -238,6 +241,10 @@ export interface PMSettings {
   overviewCollapsedGroups: Record<string, string[]>
   /** Whether the overview task table hides tasks with a terminal status. */
   overviewHideDone: boolean
+  /** Sprint tab layout: time columns (list) or Eisenhower matrix. */
+  sprintViewMode: SprintViewMode
+  /** Matrix only: nested project tree, or one row per card with hierarchy chips. */
+  sprintMatrixLayout: SprintMatrixLayout
 }
 
 export const DEFAULT_STATUSES: StatusConfig[] = [
@@ -266,7 +273,7 @@ export const DEFAULT_SETTINGS: PMSettings = {
   statuses: DEFAULT_STATUSES,
   priorities: DEFAULT_PRIORITIES,
   priorityIcons: 'chevrons',
-  customFields: [],
+  customFields: [{ id: 'urgency', name: 'Urgency', type: 'select', options: ['High', 'Medium', 'Low'] }],
   globalTeamMembers: [],
   showSubtreeConnections: true,
   lineBorders: 'none',
@@ -288,7 +295,9 @@ export const DEFAULT_SETTINGS: PMSettings = {
   collapsedTasks: {},
   collapsedProjects: [],
   overviewCollapsedGroups: {},
-  overviewHideDone: false
+  overviewHideDone: false,
+  sprintViewMode: 'list',
+  sprintMatrixLayout: 'tree'
 }
 
 export function makeId(): string {

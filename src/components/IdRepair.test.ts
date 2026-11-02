@@ -20,6 +20,7 @@ function taskRef(id: string, projectPath: string): TaskRef {
     projectId: '',
     projectPath,
     title: id,
+    type: 'task',
     status: 'todo',
     priority: 'medium',
     start: '',

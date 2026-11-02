@@ -1,14 +1,16 @@
 import type { TimeLog } from '../types'
 import type { ProjectRef, TaskRef, VaultIndex } from './VaultIndex'
+import { deriveEisenhowerQuadrant, type EisenhowerQuadrant, URGENCY_FIELD_ID } from './eisenhower'
 import { hoursByActor, isPastSprintTag, comparePastSprintTags, type SprintLane, TAG_SPRINT_CURRENT, TAG_SPRINT_NEXT } from './sprintTags'
 
 export interface SprintTaskDetails {
   timeLogs: TimeLog[]
   timeEstimate: number | undefined
+  urgency: string | undefined
 }
 
 export function detailsFromFrontmatter(frontmatter: Record<string, unknown> | undefined): SprintTaskDetails {
-  if (!frontmatter) return { timeLogs: [], timeEstimate: undefined }
+  if (!frontmatter) return { timeLogs: [], timeEstimate: undefined, urgency: undefined }
   const raw = frontmatter.timeLogs
   const timeLogs: TimeLog[] = []
   if (Array.isArray(raw)) {
@@ -22,9 +24,16 @@ export function detailsFromFrontmatter(frontmatter: Record<string, unknown> | un
     }
   }
   const estimate = frontmatter.timeEstimate
+  const custom = frontmatter.customFields
+  let urgency: string | undefined
+  if (custom && typeof custom === 'object' && !Array.isArray(custom)) {
+    const value = (custom as Record<string, unknown>)[URGENCY_FIELD_ID]
+    if (typeof value === 'string' && value.trim()) urgency = value.trim()
+  }
   return {
     timeLogs,
-    timeEstimate: typeof estimate === 'number' && Number.isFinite(estimate) ? estimate : undefined
+    timeEstimate: typeof estimate === 'number' && Number.isFinite(estimate) ? estimate : undefined,
+    urgency
   }
 }
 
@@ -52,13 +61,18 @@ export interface SprintProjectNode {
 }
 
 export interface SprintColumnModel {
-  lane: SprintLane | 'past'
+  lane: SprintLane | 'past' | 'matrix'
   tag: string
   cardCount: number
   hours: ActorHours
   logged: number
   estimate: number
   projects: SprintProjectNode[]
+}
+
+export interface EisenhowerMatrixModel {
+  quadrants: Record<EisenhowerQuadrant, SprintColumnModel>
+  unsorted: SprintColumnModel
 }
 
 export function tagForLane(lane: SprintLane): string {
@@ -189,13 +203,13 @@ function rootTaskNodes(projectPath: string, members: TaskRef[], index: VaultInde
   return nodes
 }
 
-export function buildSprintColumnFromTag(
+export function buildSprintColumnFromMembers(
   index: VaultIndex,
-  tag: string,
+  members: TaskRef[],
   details: Map<string, SprintTaskDetails>,
-  lane: SprintLane | 'past'
+  lane: SprintLane | 'past' | 'matrix',
+  tag: string
 ): SprintColumnModel {
-  const members = sprintMembersForTag(index, tag)
   const projectPaths = new Set<string>()
   for (const member of members) {
     if (!member.projectPath) continue
@@ -261,10 +275,59 @@ export function buildSprintColumnFromTag(
   }
 }
 
+export function buildSprintColumnFromTag(
+  index: VaultIndex,
+  tag: string,
+  details: Map<string, SprintTaskDetails>,
+  lane: SprintLane | 'past'
+): SprintColumnModel {
+  return buildSprintColumnFromMembers(index, sprintMembersForTag(index, tag), details, lane, tag)
+}
+
 export function buildSprintColumn(
   index: VaultIndex,
   lane: SprintLane,
   details: Map<string, SprintTaskDetails>
 ): SprintColumnModel {
   return buildSprintColumnFromTag(index, tagForLane(lane), details, lane)
+}
+
+export function liveSprintMembers(index: VaultIndex): TaskRef[] {
+  return index.allTaskRefs().filter((ref) => {
+    if (ref.archived) return false
+    return ref.tags.includes(TAG_SPRINT_CURRENT) || ref.tags.includes(TAG_SPRINT_NEXT)
+  })
+}
+
+export function buildEisenhowerMatrix(
+  index: VaultIndex,
+  details: Map<string, SprintTaskDetails>
+): EisenhowerMatrixModel {
+  const live = liveSprintMembers(index)
+  const buckets: Record<EisenhowerQuadrant | 'unsorted', TaskRef[]> = {
+    I: [],
+    II: [],
+    III: [],
+    IV: [],
+    unsorted: []
+  }
+
+  for (const ref of live) {
+    const urgency = details.get(ref.id)?.urgency
+    const quad = deriveEisenhowerQuadrant(ref.priority, urgency)
+    if (quad) buckets[quad].push(ref)
+    else buckets.unsorted.push(ref)
+  }
+
+  const quadrants = {
+    I: buildSprintColumnFromMembers(index, buckets.I, details, 'matrix', 'I'),
+    II: buildSprintColumnFromMembers(index, buckets.II, details, 'matrix', 'II'),
+    III: buildSprintColumnFromMembers(index, buckets.III, details, 'matrix', 'III'),
+    IV: buildSprintColumnFromMembers(index, buckets.IV, details, 'matrix', 'IV')
+  }
+
+  return {
+    quadrants,
+    unsorted: buildSprintColumnFromMembers(index, buckets.unsorted, details, 'matrix', 'unsorted')
+  }
 }

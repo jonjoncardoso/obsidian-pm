@@ -1,13 +1,16 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { builtinModules } from 'node:module'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'tsdown'
+
+const configDir = dirname(fileURLToPath(import.meta.url))
 
 // Local, gitignored default for VAULT_PATH so a bare `npx tsdown` deploys
 // straight to this machine's vault. Each machine (Windows, Mac Studio) keeps
 // its own .vault-path; nothing platform-specific is tracked in the repo.
 function defaultVaultPath(): string | undefined {
-  const localConfig = join(__dirname, '.vault-path')
+  const localConfig = join(configDir, '.vault-path')
   if (!existsSync(localConfig)) return undefined
   return readFileSync(localConfig, 'utf-8').trim() || undefined
 }

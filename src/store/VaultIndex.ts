@@ -38,6 +38,7 @@ export interface TaskRef {
   projectId: string
   projectPath: string | null
   title: string
+  type: 'task' | 'milestone' | 'subtask'
   status: string
   priority: string
   start: string
@@ -531,12 +532,14 @@ export class VaultIndex {
 
   private addTask(path: string, file: TFile, frontmatter: Record<string, unknown>): void {
     const projectId = str(frontmatter.projectId)
+    const rawType = str(frontmatter.type, 'task')
     const ref: TaskRef = {
       id: str(frontmatter.id, path),
       path,
       projectId,
       projectPath: this.resolveOwner(path, projectId),
       title: str(frontmatter.title, 'Untitled'),
+      type: rawType === 'milestone' ? 'milestone' : rawType === 'subtask' ? 'subtask' : 'task',
       status: str(frontmatter.status, 'todo'),
       priority: str(frontmatter.priority, 'medium'),
       start: str(frontmatter.start),

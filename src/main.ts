@@ -330,8 +330,28 @@ export default class PMPlugin extends Plugin {
     if (!this.settings.notificationMutes) this.settings.notificationMutes = {}
     if (this.settings.overviewHideDone == null) this.settings.overviewHideDone = false
     if (!this.settings.excludedFolders) this.settings.excludedFolders = []
+    if (this.settings.sprintViewMode !== 'list' && this.settings.sprintViewMode !== 'matrix') {
+      this.settings.sprintViewMode = 'list'
+    }
+    if (this.settings.sprintMatrixLayout !== 'tree' && this.settings.sprintMatrixLayout !== 'flat') {
+      this.settings.sprintMatrixLayout = 'tree'
+    }
+    if (!Array.isArray(this.settings.customFields)) this.settings.customFields = []
 
     let migrated = false
+    // Seed Urgency select for Eisenhower matrix when missing from older vault settings.
+    if (!this.settings.customFields.some((field) => field.id === 'urgency')) {
+      this.settings.customFields = [
+        ...this.settings.customFields,
+        {
+          id: 'urgency',
+          name: 'Urgency',
+          type: 'select',
+          options: ['High', 'Medium', 'Low']
+        }
+      ]
+      migrated = true
+    }
     // Filters were keyed by project path before a view could cover several projects.
     for (const key of Object.keys(this.settings.projectFilters)) {
       if (key.includes(':')) continue
