@@ -1,4 +1,4 @@
-import { setIcon } from 'obsidian'
+import { setIcon, setTooltip } from 'obsidian'
 import { Popover } from '../../primitives/Popover'
 import { renderGlyph, renderOptionRow, type SelectItem } from './optionList'
 
@@ -22,6 +22,7 @@ export function renderSelectControl(opts: SelectControlOpts): void {
   trigger.createSpan({ cls: 'pm-prop-inline-label', text: selected?.label ?? opts.placeholder ?? 'Select' })
   const chevron = trigger.createSpan({ cls: 'pm-prop-chevron' })
   setIcon(chevron, 'chevron-down')
+  if (selected?.tooltip) setTooltip(trigger, selected.tooltip)
 
   let pop: Popover | null = null
   trigger.addEventListener('click', () => {
@@ -45,6 +46,7 @@ export function renderSelectControl(opts: SelectControlOpts): void {
           label: o.label,
           color: o.color,
           icon: o.icon,
+          tooltip: o.tooltip,
           selected: o.id === opts.value,
           onPick: () => {
             pop?.close()

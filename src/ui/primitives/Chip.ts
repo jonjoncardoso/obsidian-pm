@@ -55,6 +55,12 @@ export class Chip {
     return this
   }
 
+  /** Full project-colour fill with white label (darkens light colours for contrast). */
+  setFilled(filled = true): this {
+    this.el.toggleClass('pm-chip--filled', filled)
+    return this
+  }
+
   setStrong(strong = true): this {
     this.el.toggleClass('pm-chip--strong', strong)
     return this

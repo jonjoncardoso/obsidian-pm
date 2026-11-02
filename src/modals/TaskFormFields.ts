@@ -1,5 +1,6 @@
 import type PMPlugin from '../main'
 import type { Project, Task, TaskType, Recurrence } from '../types'
+import { IMPORTANCE_LEVEL_TOOLTIPS } from '../store/eisenhower'
 import { collectAllAssignees, collectAllTags, flattenTasks } from '../store/TaskTreeOps'
 import { reaches } from '../store/Scheduler'
 import { renderPropRow } from '../ui/FormField'
@@ -141,7 +142,8 @@ export function renderTaskFormFields(container: HTMLElement, ctx: TaskFormFields
           id: p.id,
           label: p.label,
           color: p.color,
-          icon: priorityIcon(priorities, p.id, priorityIcons)
+          icon: priorityIcon(priorities, p.id, priorityIcons),
+          tooltip: IMPORTANCE_LEVEL_TOOLTIPS[p.id]
         })),
         onChange: (id) => {
           task.priority = id

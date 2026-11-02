@@ -454,7 +454,12 @@ export class SprintView extends ItemView {
 
   private pathChipColor(ref: TaskRef): string {
     if (!ref.projectPath) return 'var(--text-muted)'
-    return this.plugin.index.projectRef(ref.projectPath)?.color ?? 'var(--text-muted)'
+    // Match the first path segment (e.g. Wayglass tooling), not the leaf version colour.
+    const ancestors = this.plugin.index.ancestorRefs(ref.projectPath)
+    const root = ancestors[0]
+    if (root?.color) return root.color
+    const self = this.plugin.index.projectRef(ref.projectPath)
+    return self?.color || 'var(--text-muted)'
   }
 
   private renderFlatTasks(parent: HTMLElement, model: SprintColumnModel): void {
@@ -553,14 +558,6 @@ export class SprintView extends ItemView {
           .setColor('var(--color-green)')
           .setTooltip('Subtask')
       }
-      if (flat) {
-        new Chip(main)
-          .setLabel(this.pathLabel(node.ref))
-          .setVariant('solid')
-          .setSize('sm')
-          .setDot(true)
-          .setColor(this.pathChipColor(node.ref))
-      }
       const meta = flat ? main.createDiv('pm-sprint-task-meta') : main
       const lane = sprintMembership(node.ref.tags)
       if (lane === 'next' || (!flat && lane === 'current')) {
@@ -580,6 +577,13 @@ export class SprintView extends ItemView {
           cls: 'pm-sprint-task-actors',
           text: `agent ${node.hours.agent}h · Jon ${node.hours.jon}h`
         })
+      }
+      if (flat) {
+        new Chip(main)
+          .setLabel(this.pathLabel(node.ref))
+          .setSize('sm')
+          .setFilled(true)
+          .setColor(this.pathChipColor(node.ref))
       }
     } else {
       renderTimeChip(main, node.logged, node.estimate, 'sm')

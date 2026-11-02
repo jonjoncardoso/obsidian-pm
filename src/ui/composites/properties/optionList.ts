@@ -1,4 +1,4 @@
-import { setIcon } from 'obsidian'
+import { setIcon, setTooltip } from 'obsidian'
 import { isIconName } from '../../../utils'
 import { Avatar } from '../../primitives/Avatar'
 
@@ -7,6 +7,7 @@ export interface SelectItem {
   label: string
   color?: string
   icon?: string
+  tooltip?: string
 }
 
 export interface GlyphSpec {
@@ -34,6 +35,7 @@ export interface OptionRow extends GlyphSpec {
   accent?: boolean
   /** Draws initials from this name instead of a glyph. Used by the assignee picker. */
   avatar?: string
+  tooltip?: string
   onPick: () => void
 }
 
@@ -47,6 +49,7 @@ export function renderOptionRow(parent: HTMLElement, row: OptionRow): HTMLElemen
   const check = item.createSpan({ cls: 'pm-pop-check' })
   setIcon(check, 'check')
   if (!row.selected) check.addClass('pm-pop-check--hidden')
+  if (row.tooltip) setTooltip(item, row.tooltip)
   item.addEventListener('click', row.onPick)
   return item
 }

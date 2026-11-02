@@ -1,5 +1,6 @@
 import type PMPlugin from '../main'
 import type { Project, Task, CustomFieldDef } from '../types'
+import { URGENCY_FIELD_ID, URGENCY_LEVEL_TOOLTIPS } from '../store/eisenhower'
 import { collectAllAssignees } from '../store/TaskTreeOps'
 import { renderPersonPicker } from '../ui/PersonPicker'
 import { Checkbox } from '../ui/primitives/Checkbox'
@@ -52,10 +53,18 @@ export function renderCustomFieldInput(
       break
     }
     case 'select': {
+      const urgencyTooltips = cf.id === URGENCY_FIELD_ID
       renderSelectControl({
         container: wrap,
         value: stringifyCustomValue(value) || null,
-        options: [{ id: '', label: 'None' }, ...(cf.options ?? []).map((option) => ({ id: option, label: option }))],
+        options: [
+          { id: '', label: 'None' },
+          ...(cf.options ?? []).map((option) => ({
+            id: option,
+            label: option,
+            tooltip: urgencyTooltips ? URGENCY_LEVEL_TOOLTIPS[option] : undefined
+          }))
+        ],
         onChange: commit
       })
       break

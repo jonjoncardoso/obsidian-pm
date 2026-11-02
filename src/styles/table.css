@@ -387,6 +387,19 @@ button.pm-chip-btn--active:hover {
   background: color-mix(in srgb, var(--pm-chip-color) 10%, transparent);
   border-color: color-mix(in srgb, var(--pm-chip-color) 20%, transparent);
 }
+/* Soft-strong fill + white label. Light project colours still darken enough for contrast. */
+.pm-chip--filled {
+  background: color-mix(in srgb, var(--pm-chip-color) 78%, #1a1a1a);
+  border-color: color-mix(in srgb, var(--pm-chip-color) 70%, transparent);
+  color: #ffffff;
+}
+.pm-chip--filled .pm-chip-label,
+.pm-chip--filled .pm-chip-icon {
+  color: #ffffff;
+}
+.pm-chip--filled .pm-chip-dot {
+  background: #ffffff;
+}
 .pm-chip--outline {
   border-color: var(--background-modifier-border);
 }
