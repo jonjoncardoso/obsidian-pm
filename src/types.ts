@@ -243,6 +243,11 @@ export interface PMSettings {
   overviewHideDone: boolean
   /** Sprint tab: hide Done/Cancelled from This week, Next, and Matrix (Past unchanged). */
   sprintHideDone: boolean
+  /**
+   * Sprint project filter: umbrella paths that are unchecked.
+   * Empty means every umbrella is shown (default).
+   */
+  sprintHiddenProjectPaths: string[]
   /** Sprint tab layout: time columns (list) or Eisenhower matrix. */
   sprintViewMode: SprintViewMode
   /** Matrix only: nested project tree, or one row per card with hierarchy chips. */
@@ -299,6 +304,7 @@ export const DEFAULT_SETTINGS: PMSettings = {
   overviewCollapsedGroups: {},
   overviewHideDone: false,
   sprintHideDone: false,
+  sprintHiddenProjectPaths: [],
   sprintViewMode: 'list',
   sprintMatrixLayout: 'tree'
 }

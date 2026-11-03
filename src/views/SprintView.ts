@@ -1,13 +1,15 @@
-import { ButtonComponent, ItemView, TFile, WorkspaceLeaf } from 'obsidian'
+import { ButtonComponent, ItemView, setIcon, TFile, WorkspaceLeaf } from 'obsidian'
 import type PMPlugin from '../main'
 import { formatDateShort, today } from '../dates'
 import { dateUrgency, isTerminalStatus, safeAsync } from '../utils'
 import type { PriorityConfig, SprintMatrixLayout, SprintViewMode, StatusConfig, TaskStatus } from '../types'
-import type { TaskRef } from '../store/VaultIndex'
+import type { ProjectRef, TaskRef } from '../store/VaultIndex'
 import { confirmDialog, openTaskModal } from '../ui/ModalFactory'
 import { BinarySwitch } from '../ui/primitives/BinarySwitch'
+import { ChipButton } from '../ui/primitives/ChipButton'
 import { CollapseToggle } from '../ui/primitives/CollapseToggle'
 import { Chip } from '../ui/primitives/Chip'
+import { Popover } from '../ui/primitives/Popover'
 import { renderGlyph } from '../ui/composites/properties'
 import { renderDueChip } from '../ui/composites/dueChip'
 import { renderTimeChip } from '../ui/composites/timeChip'
@@ -20,11 +22,11 @@ import {
 import {
   buildEisenhowerMatrix,
   buildSprintColumnFromMembers,
-  buildSprintColumnFromTag,
   detailsFromFrontmatter,
   listPastSprintTags,
   liveSprintMembers,
   sprintMembers,
+  sprintMembersForTag,
   withoutTerminalMembers,
   type EisenhowerMatrixModel,
   type SprintColumnModel,
@@ -32,6 +34,15 @@ import {
   type SprintTaskDetails,
   type SprintTaskNode
 } from '../store/sprintBoard'
+import {
+  allSprintUmbrellaPaths,
+  collectSprintFilterGroups,
+  filterMembersByProjects,
+  hideAllUmbrellas,
+  rootFullyVisible,
+  toggleHiddenPath,
+  type SprintFilterGroup
+} from '../store/sprintProjectFilter'
 import { closeWeekConfirmCopy, writeCloseWeek } from '../store/sprintApply'
 import {
   isPastSprintTag,
@@ -116,6 +127,8 @@ export class SprintView extends ItemView {
   private renderGen = 0
   private expandedPastTags = new Set<string>()
   private closingWeek = false
+  private projectFilterBtn: ChipButton | null = null
+  private projectFilterPop: Popover | null = null
 
   constructor(leaf: WorkspaceLeaf, plugin: PMPlugin) {
     super(leaf)
@@ -152,6 +165,9 @@ export class SprintView extends ItemView {
       window.clearTimeout(this.reloadDebounceTimer)
       this.reloadDebounceTimer = null
     }
+    this.projectFilterPop?.close()
+    this.projectFilterPop = null
+    this.projectFilterBtn = null
     return Promise.resolve()
   }
 
@@ -167,8 +183,13 @@ export class SprintView extends ItemView {
   }
 
   async render(): Promise<void> {
-    const gen = ++this.renderGen
     this.renderToolbar()
+    await this.renderBody()
+  }
+
+  /** Repaint columns without rebuilding the toolbar (keeps the Project filter popover open). */
+  private async renderBody(): Promise<void> {
+    const gen = ++this.renderGen
     const details = this.collectDetails()
     if (gen !== this.renderGen) return
     const index = this.plugin.index
@@ -186,21 +207,42 @@ export class SprintView extends ItemView {
         TAG_SPRINT_CURRENT
       ),
       buildSprintColumnFromMembers(index, this.membersForLane('next'), details, 'next', TAG_SPRINT_NEXT),
-      pastTags.map((tag) => buildSprintColumnFromTag(index, tag, details, 'past'))
+      pastTags.map((tag) =>
+        buildSprintColumnFromMembers(
+          index,
+          this.applyProjectFilter(sprintMembersForTag(index, tag)),
+          details,
+          'past',
+          tag
+        )
+      )
     )
   }
 
-  /** Live sprint members with optional Hide done filter (Past columns stay unfiltered). */
+  /** Project umbrella filter only (Past keeps completed cards; Hide done does not apply). */
+  private applyProjectFilter(members: TaskRef[]): TaskRef[] {
+    return filterMembersByProjects(
+      members,
+      this.plugin.settings.sprintHiddenProjectPaths,
+      this.plugin.index
+    )
+  }
+
+  /** Hide done plus project filter for live This week / Next / Matrix. */
+  private applyMemberFilters(members: TaskRef[]): TaskRef[] {
+    let out = members
+    if (this.plugin.settings.sprintHideDone) {
+      out = withoutTerminalMembers(out, this.plugin.settings.statuses)
+    }
+    return this.applyProjectFilter(out)
+  }
+
   private liveMembersForView(): ReturnType<typeof liveSprintMembers> {
-    const members = liveSprintMembers(this.plugin.index)
-    if (!this.plugin.settings.sprintHideDone) return members
-    return withoutTerminalMembers(members, this.plugin.settings.statuses)
+    return this.applyMemberFilters(liveSprintMembers(this.plugin.index))
   }
 
   private membersForLane(lane: 'current' | 'next'): ReturnType<typeof sprintMembers> {
-    const members = sprintMembers(this.plugin.index, lane)
-    if (!this.plugin.settings.sprintHideDone) return members
-    return withoutTerminalMembers(members, this.plugin.settings.statuses)
+    return this.applyMemberFilters(sprintMembers(this.plugin.index, lane))
   }
 
   private viewMode(): SprintViewMode {
@@ -251,6 +293,7 @@ export class SprintView extends ItemView {
         })
       })
     }
+    this.renderProjectFilter(right)
     const hideDone = right.createEl('label', { cls: 'pm-sprint-hide-done' })
     const hideDoneBox = hideDone.createEl('input', { type: 'checkbox' })
     hideDoneBox.checked = this.plugin.settings.sprintHideDone
@@ -272,6 +315,130 @@ export class SprintView extends ItemView {
     new ButtonComponent(right).setButtonText('Projects').onClick(() => {
       void this.plugin.router.openDashboard()
     })
+  }
+
+  private renderProjectFilter(parent: HTMLElement): void {
+    const btn = new ChipButton(parent).setAriaLabel('Filter by project')
+    this.projectFilterBtn = btn
+    this.syncProjectFilterChip()
+
+    btn.onClick((e) => {
+      e.stopPropagation()
+      if (this.projectFilterPop?.isOpen) {
+        this.projectFilterPop.close()
+        return
+      }
+      const pop = new Popover({
+        anchor: btn.el,
+        align: 'right',
+        width: 280,
+        onClose: () => {
+          if (this.projectFilterPop === pop) this.projectFilterPop = null
+        }
+      })
+      pop.el.addClass('pm-sprint-filter-pop')
+      this.projectFilterPop = pop
+      this.fillProjectFilterPop(pop)
+      pop.open()
+    })
+  }
+
+  private syncProjectFilterChip(): void {
+    const btn = this.projectFilterBtn
+    if (!btn) return
+    const allPaths = allSprintUmbrellaPaths(collectSprintFilterGroups(this.plugin.index))
+    const hidden = this.plugin.settings.sprintHiddenProjectPaths
+    const visibleCount = allPaths.filter((path) => !hidden.includes(path)).length
+    const filtering = hidden.length > 0
+    btn.setLabel(filtering ? `Project: ${visibleCount}` : 'Project').setActive(filtering)
+  }
+
+  private fillProjectFilterPop(pop: Popover): void {
+    pop.contentEl.empty()
+    const groups = collectSprintFilterGroups(this.plugin.index)
+    const hidden = this.plugin.settings.sprintHiddenProjectPaths
+    const list = pop.contentEl.createDiv('pm-pop-list')
+
+    for (const group of groups) {
+      this.renderProjectFilterRootRow(list, group, hidden)
+      for (const umbrella of group.umbrellas) {
+        this.renderProjectFilterChildRow(list, umbrella, group.root.color, hidden)
+      }
+    }
+
+    const footer = pop.contentEl.createDiv('pm-sprint-filter-footer')
+    const showAll = footer.createEl('button', { cls: 'pm-pop-item', text: 'Show all' })
+    showAll.addEventListener(
+      'click',
+      safeAsync(async () => {
+        await this.setHiddenProjectPaths([])
+      })
+    )
+    const hideAll = footer.createEl('button', { cls: 'pm-pop-item', text: 'Hide all' })
+    hideAll.addEventListener(
+      'click',
+      safeAsync(async () => {
+        await this.setHiddenProjectPaths(hideAllUmbrellas(groups))
+      })
+    )
+  }
+
+  private renderProjectFilterRootRow(
+    parent: HTMLElement,
+    group: SprintFilterGroup,
+    hidden: string[]
+  ): void {
+    const selected = rootFullyVisible(group, hidden)
+    const row = parent.createEl('button', { cls: 'pm-pop-item pm-sprint-filter-root' })
+    renderGlyph(row, { icon: group.root.icon, color: group.root.color || undefined })
+    row.createSpan({ cls: 'pm-pop-item-label pm-sprint-filter-root-label', text: group.root.title })
+    const check = row.createSpan({ cls: 'pm-pop-check' })
+    setIcon(check, 'check')
+    if (!selected) check.addClass('pm-pop-check--hidden')
+    row.addEventListener(
+      'click',
+      safeAsync(async () => {
+        let next = [...this.plugin.settings.sprintHiddenProjectPaths]
+        if (rootFullyVisible(group, next)) {
+          for (const u of group.umbrellas) next = toggleHiddenPath(next, u.path, true)
+        } else {
+          for (const u of group.umbrellas) next = toggleHiddenPath(next, u.path, false)
+        }
+        await this.setHiddenProjectPaths(next)
+      })
+    )
+  }
+
+  private renderProjectFilterChildRow(
+    parent: HTMLElement,
+    umbrella: ProjectRef,
+    rootColor: string,
+    hidden: string[]
+  ): void {
+    const selected = !hidden.includes(umbrella.path)
+    const color = umbrella.color || rootColor || undefined
+    const row = parent.createEl('button', { cls: 'pm-pop-item pm-sprint-filter-child' })
+    renderGlyph(row, { icon: umbrella.icon, color })
+    row.createSpan({ cls: 'pm-pop-item-label', text: umbrella.title })
+    const check = row.createSpan({ cls: 'pm-pop-check' })
+    setIcon(check, 'check')
+    if (!selected) check.addClass('pm-pop-check--hidden')
+    row.addEventListener(
+      'click',
+      safeAsync(async () => {
+        await this.setHiddenProjectPaths(
+          toggleHiddenPath(this.plugin.settings.sprintHiddenProjectPaths, umbrella.path, selected)
+        )
+      })
+    )
+  }
+
+  private async setHiddenProjectPaths(paths: string[]): Promise<void> {
+    this.plugin.settings.sprintHiddenProjectPaths = paths
+    await this.plugin.saveSettings()
+    this.syncProjectFilterChip()
+    await this.renderBody()
+    if (this.projectFilterPop?.isOpen) this.fillProjectFilterPop(this.projectFilterPop)
   }
 
   private collectDetails(): Map<string, SprintTaskDetails> {

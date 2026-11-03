@@ -35,6 +35,24 @@
   margin: 0;
 }
 
+.pm-sprint-filter-pop {
+  max-height: min(80vh, 560px);
+}
+
+.pm-sprint-filter-root-label {
+  font-weight: 600;
+}
+
+button.pm-pop-item.pm-sprint-filter-child {
+  padding: 7px 9px 7px 28px;
+}
+
+.pm-sprint-filter-footer {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
 .pm-sprint-matrix {
   --pm-q1: #c45c58;
   --pm-q2: #4f7a5c;
