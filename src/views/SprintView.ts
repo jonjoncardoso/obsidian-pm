@@ -5,6 +5,7 @@ import { dateUrgency, isTerminalStatus, safeAsync } from '../utils'
 import type { PriorityConfig, SprintMatrixLayout, SprintViewMode, StatusConfig, TaskStatus } from '../types'
 import type { TaskRef } from '../store/VaultIndex'
 import { confirmDialog, openTaskModal } from '../ui/ModalFactory'
+import { BinarySwitch } from '../ui/primitives/BinarySwitch'
 import { CollapseToggle } from '../ui/primitives/CollapseToggle'
 import { Chip } from '../ui/primitives/Chip'
 import { renderGlyph } from '../ui/composites/properties'
@@ -18,11 +19,13 @@ import {
 } from '../store/eisenhower'
 import {
   buildEisenhowerMatrix,
-  buildSprintColumn,
+  buildSprintColumnFromMembers,
   buildSprintColumnFromTag,
   detailsFromFrontmatter,
   listPastSprintTags,
+  liveSprintMembers,
   sprintMembers,
+  withoutTerminalMembers,
   type EisenhowerMatrixModel,
   type SprintColumnModel,
   type SprintProjectNode,
@@ -168,16 +171,36 @@ export class SprintView extends ItemView {
     this.renderToolbar()
     const details = this.collectDetails()
     if (gen !== this.renderGen) return
+    const index = this.plugin.index
     if (this.viewMode() === 'matrix') {
-      this.paintMatrix(buildEisenhowerMatrix(this.plugin.index, details))
+      this.paintMatrix(buildEisenhowerMatrix(index, details, this.liveMembersForView()))
       return
     }
-    const pastTags = listPastSprintTags(this.plugin.index)
+    const pastTags = listPastSprintTags(index)
     this.paint(
-      buildSprintColumn(this.plugin.index, 'current', details),
-      buildSprintColumn(this.plugin.index, 'next', details),
-      pastTags.map((tag) => buildSprintColumnFromTag(this.plugin.index, tag, details, 'past'))
+      buildSprintColumnFromMembers(
+        index,
+        this.membersForLane('current'),
+        details,
+        'current',
+        TAG_SPRINT_CURRENT
+      ),
+      buildSprintColumnFromMembers(index, this.membersForLane('next'), details, 'next', TAG_SPRINT_NEXT),
+      pastTags.map((tag) => buildSprintColumnFromTag(index, tag, details, 'past'))
     )
+  }
+
+  /** Live sprint members with optional Hide done filter (Past columns stay unfiltered). */
+  private liveMembersForView(): ReturnType<typeof liveSprintMembers> {
+    const members = liveSprintMembers(this.plugin.index)
+    if (!this.plugin.settings.sprintHideDone) return members
+    return withoutTerminalMembers(members, this.plugin.settings.statuses)
+  }
+
+  private membersForLane(lane: 'current' | 'next'): ReturnType<typeof sprintMembers> {
+    const members = sprintMembers(this.plugin.index, lane)
+    if (!this.plugin.settings.sprintHideDone) return members
+    return withoutTerminalMembers(members, this.plugin.settings.statuses)
   }
 
   private viewMode(): SprintViewMode {
@@ -207,36 +230,40 @@ export class SprintView extends ItemView {
     const left = this.toolbarEl.createDiv('pm-toolbar-left')
     left.createEl('h2', { text: 'Sprint', cls: 'pm-toolbar-title' })
     const right = this.toolbarEl.createDiv('pm-toolbar-right')
-    const toggle = right.createDiv('pm-sprint-view-toggle')
     const mode = this.viewMode()
-    const listBtn = new ButtonComponent(toggle).setButtonText('List').onClick(
-      safeAsync(async () => {
-        await this.setViewMode('list')
+    new BinarySwitch(right, {
+      left: { id: 'list', label: 'List' },
+      right: { id: 'matrix', label: 'Matrix' },
+      value: mode,
+      ariaLabel: 'Sprint layout List or Matrix',
+      onChange: safeAsync(async (next) => {
+        await this.setViewMode(next)
       })
-    )
-    const matrixBtn = new ButtonComponent(toggle).setButtonText('Matrix').onClick(
-      safeAsync(async () => {
-        await this.setViewMode('matrix')
-      })
-    )
-    if (mode === 'list') listBtn.setCta()
-    else matrixBtn.setCta()
+    })
     if (mode === 'matrix') {
-      const layoutToggle = right.createDiv('pm-sprint-view-toggle')
-      const layout = this.matrixLayout()
-      const treeBtn = new ButtonComponent(layoutToggle).setButtonText('Tree').onClick(
-        safeAsync(async () => {
-          await this.setMatrixLayout('tree')
+      new BinarySwitch(right, {
+        left: { id: 'tree', label: 'Tree' },
+        right: { id: 'flat', label: 'Flat' },
+        value: this.matrixLayout(),
+        ariaLabel: 'Matrix cards Tree or Flat',
+        onChange: safeAsync(async (next) => {
+          await this.setMatrixLayout(next)
         })
-      )
-      const flatBtn = new ButtonComponent(layoutToggle).setButtonText('Flat').onClick(
-        safeAsync(async () => {
-          await this.setMatrixLayout('flat')
-        })
-      )
-      if (layout === 'tree') treeBtn.setCta()
-      else flatBtn.setCta()
+      })
     }
+    const hideDone = right.createEl('label', { cls: 'pm-sprint-hide-done' })
+    const hideDoneBox = hideDone.createEl('input', { type: 'checkbox' })
+    hideDoneBox.checked = this.plugin.settings.sprintHideDone
+    hideDoneBox.setAttribute('aria-label', 'Hide done')
+    hideDone.appendText(' Hide done')
+    hideDoneBox.addEventListener(
+      'change',
+      safeAsync(async () => {
+        this.plugin.settings.sprintHideDone = hideDoneBox.checked
+        await this.plugin.saveSettings()
+        await this.render()
+      })
+    )
     new ButtonComponent(right).setButtonText('Close week').onClick(
       safeAsync(async () => {
         await this.closeWeek()

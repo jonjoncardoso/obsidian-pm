@@ -8,7 +8,9 @@ import {
   buildSprintColumn,
   buildSprintColumnFromTag,
   detailsFromFrontmatter,
-  listPastSprintTags
+  listPastSprintTags,
+  liveSprintMembers,
+  withoutTerminalMembers
 } from './sprintBoard'
 import { TAG_SPRINT_CURRENT, TAG_SPRINT_NEXT } from './sprintTags'
 
@@ -292,5 +294,53 @@ tags:
     expect(matrix.quadrants.IV.cardCount).toBe(0)
     expect(matrix.unsorted.cardCount).toBe(1)
     expect(matrix.unsorted.projects[0].tasks.map((t) => t.ref.id)).toEqual(['unsorted'])
+  })
+
+  it('accepts a prefiltered member list so Hide done can drop terminal cards', async () => {
+    await vault.create('Projects/Research/Research.md', projectNote('research', 'Research'))
+    await vault.create(
+      'Projects/Research/_tasks/open.md',
+      `---
+pm-task: true
+id: open
+projectId: research
+title: Still open
+status: todo
+priority: high
+tags:
+  - ${TAG_SPRINT_CURRENT}
+customFields:
+  urgency: High
+---
+
+`
+    )
+    await vault.create(
+      'Projects/Research/_tasks/finished.md',
+      `---
+pm-task: true
+id: finished
+projectId: research
+title: Finished
+status: done
+priority: high
+tags:
+  - ${TAG_SPRINT_CURRENT}
+customFields:
+  urgency: High
+---
+
+`
+    )
+    index.build()
+
+    const details = new Map([
+      ['open', { timeLogs: [], timeEstimate: undefined, urgency: 'High' }],
+      ['finished', { timeLogs: [], timeEstimate: undefined, urgency: 'High' }]
+    ])
+    const live = withoutTerminalMembers(liveSprintMembers(index), settings.statuses)
+    const matrix = buildEisenhowerMatrix(index, details, live)
+    expect(matrix.quadrants.I.cardCount).toBe(1)
+    expect(matrix.quadrants.I.projects[0].tasks.map((t) => t.ref.id)).toEqual(['open'])
   })
 })

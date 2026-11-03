@@ -329,6 +329,7 @@ export default class PMPlugin extends Plugin {
     if (!this.settings.overviewCollapsedGroups) this.settings.overviewCollapsedGroups = {}
     if (!this.settings.notificationMutes) this.settings.notificationMutes = {}
     if (this.settings.overviewHideDone == null) this.settings.overviewHideDone = false
+    if (this.settings.sprintHideDone == null) this.settings.sprintHideDone = false
     if (!this.settings.excludedFolders) this.settings.excludedFolders = []
     if (this.settings.sprintViewMode !== 'list' && this.settings.sprintViewMode !== 'matrix') {
       this.settings.sprintViewMode = 'list'

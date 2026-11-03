@@ -1,5 +1,6 @@
-import type { TimeLog } from '../types'
+import type { StatusConfig, TimeLog } from '../types'
 import type { ProjectRef, TaskRef, VaultIndex } from './VaultIndex'
+import { isTerminalStatus } from '../utils'
 import { deriveEisenhowerQuadrant, type EisenhowerQuadrant, URGENCY_FIELD_ID } from './eisenhower'
 import { hoursByActor, isPastSprintTag, comparePastSprintTags, type SprintLane, TAG_SPRINT_CURRENT, TAG_SPRINT_NEXT } from './sprintTags'
 
@@ -299,11 +300,17 @@ export function liveSprintMembers(index: VaultIndex): TaskRef[] {
   })
 }
 
+/** Drop Done/Cancelled (and any other complete status) from a sprint member list. */
+export function withoutTerminalMembers(members: TaskRef[], statuses: StatusConfig[]): TaskRef[] {
+  return members.filter((ref) => !isTerminalStatus(ref.status, statuses))
+}
+
 export function buildEisenhowerMatrix(
   index: VaultIndex,
-  details: Map<string, SprintTaskDetails>
+  details: Map<string, SprintTaskDetails>,
+  members: TaskRef[] = liveSprintMembers(index)
 ): EisenhowerMatrixModel {
-  const live = liveSprintMembers(index)
+  const live = members
   const buckets: Record<EisenhowerQuadrant | 'unsorted', TaskRef[]> = {
     I: [],
     II: [],

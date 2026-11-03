@@ -20,10 +20,19 @@
   min-height: 0;
 }
 
-.pm-sprint-view-toggle {
+.pm-sprint-hide-done {
   display: inline-flex;
+  align-items: center;
   gap: 4px;
   margin-right: 8px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.pm-sprint-hide-done input[type='checkbox'] {
+  margin: 0;
 }
 
 .pm-sprint-matrix {

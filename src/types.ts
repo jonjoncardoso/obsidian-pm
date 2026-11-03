@@ -241,6 +241,8 @@ export interface PMSettings {
   overviewCollapsedGroups: Record<string, string[]>
   /** Whether the overview task table hides tasks with a terminal status. */
   overviewHideDone: boolean
+  /** Sprint tab: hide Done/Cancelled from This week, Next, and Matrix (Past unchanged). */
+  sprintHideDone: boolean
   /** Sprint tab layout: time columns (list) or Eisenhower matrix. */
   sprintViewMode: SprintViewMode
   /** Matrix only: nested project tree, or one row per card with hierarchy chips. */
@@ -296,6 +298,7 @@ export const DEFAULT_SETTINGS: PMSettings = {
   collapsedProjects: [],
   overviewCollapsedGroups: {},
   overviewHideDone: false,
+  sprintHideDone: false,
   sprintViewMode: 'list',
   sprintMatrixLayout: 'tree'
 }
