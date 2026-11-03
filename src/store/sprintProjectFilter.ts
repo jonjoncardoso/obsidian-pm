@@ -20,7 +20,7 @@ export function allSprintUmbrellaPaths(groups: SprintFilterGroup[]): string[] {
 /**
  * Filter key for a card's project: the pm-project directly under a root.
  * `Projects/Research/Tutor Paper` → itself.
- * `Projects/Wayglass tooling/board/v2.0 - board` → board.
+ * `Projects/Tooling/board/v2.0 - board` → board.
  */
 export function sprintUmbrellaPath(projectPath: string, index: VaultIndex): string | null {
   if (!index.projectRef(projectPath)) return null
