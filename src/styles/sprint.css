@@ -202,6 +202,100 @@ button.pm-pop-item.pm-sprint-filter-child {
   background: var(--background-modifier-hover);
 }
 
+/*
+ * Flat rows: [hours | status | body]. Hours stay a fixed column; status is
+ * natural width so "To Do" does not leave a 7rem hole before the title.
+ */
+.pm-sprint-task--flat .pm-sprint-task-main {
+  display: grid;
+  grid-template-columns: 3.25rem max-content minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.pm-sprint-task--flat .pm-sprint-effort {
+  grid-column: 1;
+}
+
+.pm-sprint-flat-status {
+  grid-column: 2;
+  min-width: 0;
+  justify-self: start;
+}
+
+.pm-sprint-flat-body {
+  grid-column: 3;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+.pm-sprint-flat-body .pm-sprint-task-title {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.pm-sprint-flat-body .pm-sprint-task-meta {
+  flex: 0 0 auto;
+  margin-left: 0;
+}
+
+.pm-sprint-flat-body > .pm-chip--filled {
+  flex: 0 0 auto;
+}
+
+.pm-sprint-effort {
+  justify-self: stretch;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #8a8c84;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.theme-dark .pm-sprint-effort {
+  color: var(--text-muted);
+}
+
+.pm-sprint-effort--m {
+  font-weight: 600;
+  color: #5e6058;
+}
+
+.pm-sprint-effort--l {
+  font-weight: 650;
+  color: #454740;
+}
+
+.pm-sprint-effort--xl {
+  font-weight: 700;
+  color: #31332c;
+}
+
+.theme-dark .pm-sprint-effort--m,
+.theme-dark .pm-sprint-effort--l,
+.theme-dark .pm-sprint-effort--xl {
+  color: var(--text-normal);
+}
+
+.pm-sprint-effort--overrun {
+  color: #c45c58;
+  font-weight: 700;
+}
+
+.theme-dark .pm-sprint-effort--overrun {
+  color: #c45c58;
+}
+
 .pm-sprint-task-main {
   display: flex;
   flex-direction: row;

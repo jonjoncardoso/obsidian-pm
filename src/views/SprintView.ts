@@ -45,6 +45,12 @@ import {
 } from '../store/sprintProjectFilter'
 import { closeWeekConfirmCopy, writeCloseWeek } from '../store/sprintApply'
 import {
+  effortBand,
+  effortWeight,
+  formatEffortLabel,
+  isEffortOverrun
+} from '../store/sprintEffort'
+import {
   isPastSprintTag,
   pastSprintTag,
   sprintMembership,
@@ -81,8 +87,9 @@ function priorityRank(priority: string, priorities: PriorityConfig[]): number {
 }
 
 /**
- * Flat quadrant order: open above Done/Cancelled; among open, attention → due →
- * priority → This week before Next; among terminal, newest completed first.
+ * Flat quadrant order: open above Done/Cancelled; among open, heavier effort
+ * first (max of estimate and logged), then attention → due → priority → This week
+ * before Next; among terminal, newest completed first.
  */
 function compareFlatSprintTasks(
   a: SprintTaskNode,
@@ -95,6 +102,9 @@ function compareFlatSprintTasks(
   if (aTerm !== bTerm) return aTerm ? 1 : -1
 
   if (!aTerm) {
+    const byEffort = effortWeight(b.logged, b.estimate) - effortWeight(a.logged, a.estimate)
+    if (byEffort !== 0) return byEffort
+
     const byAttention = attentionRank(a.ref.status) - attentionRank(b.ref.status)
     if (byAttention !== 0) return byAttention
 
@@ -648,7 +658,7 @@ export class SprintView extends ItemView {
 
   private pathChipColor(ref: TaskRef): string {
     if (!ref.projectPath) return 'var(--text-muted)'
-    // Match the first path segment (e.g. Wayglass tooling), not the leaf version colour.
+    // Match the first path segment (root project), not the leaf version colour.
     const ancestors = this.plugin.index.ancestorRefs(ref.projectPath)
     const root = ancestors[0]
     if (root?.color) return root.color
@@ -664,6 +674,19 @@ export class SprintView extends ItemView {
     }
     const list = parent.createDiv('pm-sprint-tasks')
     for (const task of tasks) this.renderTask(list, task, 0, { flat: true })
+  }
+
+  /**
+   * Leading tabular effort cell for Matrix Flat.
+   * Always mounts the cell so the hours column lines up when a row has no hours.
+   */
+  private renderFlatEffort(main: HTMLElement, node: SprintTaskNode): void {
+    const label = formatEffortLabel(node.logged, node.estimate)
+    const el = main.createSpan({ cls: 'pm-sprint-effort', text: label ?? '' })
+    if (!label) return
+    const band = effortBand(effortWeight(node.logged, node.estimate))
+    if (band !== 'none') el.addClass(`pm-sprint-effort--${band}`)
+    if (isEffortOverrun(node.logged, node.estimate)) el.addClass('pm-sprint-effort--overrun')
   }
 
   private renderProject(parent: HTMLElement, node: SprintProjectNode, depth: number): void {
@@ -724,8 +747,12 @@ export class SprintView extends ItemView {
     if (!node.groupingOnly) {
       const statuses = this.plugin.settings.statuses
       if (isTerminalStatus(node.ref.status, statuses)) row.addClass('pm-sprint-task--done')
+      // Flat: hours column first (fixed), then status at natural width, so short
+      // badges do not open a hole before the measure.
+      if (flat) this.renderFlatEffort(main, node)
+      const statusHost = flat ? main.createDiv('pm-sprint-flat-status') : main
       renderStatusBadgeFromId(
-        main,
+        statusHost,
         node.ref.status,
         statuses,
         (status) => {
@@ -734,10 +761,13 @@ export class SprintView extends ItemView {
         'sm'
       )
     }
-    main.createSpan({ cls: 'pm-sprint-task-title', text: node.ref.title })
+    // Flat: title + chips pack left in one cluster so path does not pin to the far edge.
+    const body = flat ? main.createDiv('pm-sprint-flat-body') : main
+    body.createSpan({ cls: 'pm-sprint-task-title', text: node.ref.title })
     if (!node.groupingOnly) {
+      const meta = flat ? body.createDiv('pm-sprint-task-meta') : main
       if (node.ref.type === 'milestone') {
-        new Chip(main)
+        new Chip(meta)
           .setLabel('M')
           .setVariant('solid')
           .setSize('sm')
@@ -745,14 +775,13 @@ export class SprintView extends ItemView {
           .setTooltip('Milestone')
       }
       if (node.ref.type === 'subtask') {
-        new Chip(main)
+        new Chip(meta)
           .setLabel('Sub')
           .setVariant('solid')
           .setSize('sm')
           .setColor('var(--color-green)')
           .setTooltip('Subtask')
       }
-      const meta = flat ? main.createDiv('pm-sprint-task-meta') : main
       const lane = sprintMembership(node.ref.tags)
       if (lane === 'next' || (!flat && lane === 'current')) {
         new Chip(meta)
@@ -765,7 +794,7 @@ export class SprintView extends ItemView {
         const urgency = terminal ? 'normal' : dateUrgency(node.ref.due, true)
         renderDueChip(meta, formatDateShort(node.ref.due), urgency, 'sm')
       }
-      renderTimeChip(meta, node.logged, node.estimate, 'sm')
+      if (!flat) renderTimeChip(meta, node.logged, node.estimate, 'sm')
       if (!flat && (node.hours.agent > 0 || node.hours.jon > 0)) {
         meta.createSpan({
           cls: 'pm-sprint-task-actors',
@@ -773,7 +802,7 @@ export class SprintView extends ItemView {
         })
       }
       if (flat) {
-        new Chip(main)
+        new Chip(body)
           .setLabel(this.pathLabel(node.ref))
           .setSize('sm')
           .setFilled(true)
