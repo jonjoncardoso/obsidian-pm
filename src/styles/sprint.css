@@ -250,6 +250,15 @@ button.pm-pop-item.pm-sprint-filter-child {
   flex: 0 0 auto;
 }
 
+.pm-sprint-task--flat.pm-sprint-task--group .pm-sprint-task-title {
+  font-weight: 550;
+  color: var(--text-muted);
+}
+
+.pm-sprint-task--flat.pm-sprint-task--group:hover {
+  background: transparent;
+}
+
 .pm-sprint-effort {
   justify-self: stretch;
   min-width: 0;

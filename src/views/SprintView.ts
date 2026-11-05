@@ -2,7 +2,7 @@ import { ButtonComponent, ItemView, setIcon, TFile, WorkspaceLeaf } from 'obsidi
 import type PMPlugin from '../main'
 import { formatDateShort, today } from '../dates'
 import { dateUrgency, isTerminalStatus, safeAsync } from '../utils'
-import type { PriorityConfig, SprintMatrixLayout, SprintViewMode, StatusConfig, TaskStatus } from '../types'
+import type { SprintMatrixLayout, SprintViewMode, TaskStatus } from '../types'
 import type { ProjectRef, TaskRef } from '../store/VaultIndex'
 import { confirmDialog, openTaskModal } from '../ui/ModalFactory'
 import { BinarySwitch } from '../ui/primitives/BinarySwitch'
@@ -50,6 +50,7 @@ import {
   formatEffortLabel,
   isEffortOverrun
 } from '../store/sprintEffort'
+import { flatNestedCardCount, flatRowEffort, sortedFlatSprintRoots } from '../store/sprintFlatGroups'
 import {
   isPastSprintTag,
   pastSprintTag,
@@ -65,68 +66,6 @@ function clipWords(text: string, maxWords: number): string {
   return `${words.slice(0, maxWords).join(' ')}…`
 }
 
-/** Open work by attention; unknown statuses fall after the named ones. */
-function attentionRank(status: string): number {
-  switch (status) {
-    case 'in-progress':
-      return 0
-    case 'blocked':
-      return 1
-    case 'review':
-      return 2
-    case 'todo':
-      return 3
-    default:
-      return 4
-  }
-}
-
-function priorityRank(priority: string, priorities: PriorityConfig[]): number {
-  const idx = priorities.findIndex((cfg) => cfg.id === priority)
-  return idx >= 0 ? idx : 999
-}
-
-/**
- * Flat quadrant order: open above Done/Cancelled; among open, heavier effort
- * first (max of estimate and logged), then attention → due → priority → This week
- * before Next; among terminal, newest completed first.
- */
-function compareFlatSprintTasks(
-  a: SprintTaskNode,
-  b: SprintTaskNode,
-  statuses: StatusConfig[],
-  priorities: PriorityConfig[]
-): number {
-  const aTerm = isTerminalStatus(a.ref.status, statuses)
-  const bTerm = isTerminalStatus(b.ref.status, statuses)
-  if (aTerm !== bTerm) return aTerm ? 1 : -1
-
-  if (!aTerm) {
-    const byEffort = effortWeight(b.logged, b.estimate) - effortWeight(a.logged, a.estimate)
-    if (byEffort !== 0) return byEffort
-
-    const byAttention = attentionRank(a.ref.status) - attentionRank(b.ref.status)
-    if (byAttention !== 0) return byAttention
-
-    const aDue = a.ref.due || '9999-99-99'
-    const bDue = b.ref.due || '9999-99-99'
-    if (aDue !== bDue) return aDue.localeCompare(bDue)
-
-    const byPriority = priorityRank(a.ref.priority, priorities) - priorityRank(b.ref.priority, priorities)
-    if (byPriority !== 0) return byPriority
-
-    const aLane = sprintMembership(a.ref.tags) === 'next' ? 1 : 0
-    const bLane = sprintMembership(b.ref.tags) === 'next' ? 1 : 0
-    if (aLane !== bLane) return aLane - bLane
-  } else {
-    const aDone = a.ref.completed || ''
-    const bDone = b.ref.completed || ''
-    if (aDone !== bDone) return bDone.localeCompare(aDone)
-  }
-
-  return a.ref.title.localeCompare(b.ref.title)
-}
-
 export const PM_SPRINT_VIEW_TYPE = 'pm-sprint'
 
 export class SprintView extends ItemView {
@@ -139,6 +78,8 @@ export class SprintView extends ItemView {
   private closingWeek = false
   private projectFilterBtn: ChipButton | null = null
   private projectFilterPop: Popover | null = null
+  /** Details map for the in-flight paint (Flat own-effort on parents with children). */
+  private paintDetails = new Map<string, SprintTaskDetails>()
 
   constructor(leaf: WorkspaceLeaf, plugin: PMPlugin) {
     super(leaf)
@@ -201,6 +142,7 @@ export class SprintView extends ItemView {
   private async renderBody(): Promise<void> {
     const gen = ++this.renderGen
     const details = this.collectDetails()
+    this.paintDetails = details
     if (gen !== this.renderGen) return
     const index = this.plugin.index
     if (this.viewMode() === 'matrix') {
@@ -610,20 +552,7 @@ export class SprintView extends ItemView {
   }
 
   private collectFlatTasks(model: SprintColumnModel): SprintTaskNode[] {
-    const out: SprintTaskNode[] = []
-    const walkTask = (node: SprintTaskNode): void => {
-      if (!node.groupingOnly) out.push(node)
-      for (const child of node.children) walkTask(child)
-    }
-    const walkProject = (node: SprintProjectNode): void => {
-      for (const task of node.tasks) walkTask(task)
-      for (const child of node.children) walkProject(child)
-    }
-    for (const project of model.projects) walkProject(project)
-    const statuses = this.plugin.settings.statuses
-    const priorities = this.plugin.settings.priorities
-    out.sort((a, b) => compareFlatSprintTasks(a, b, statuses, priorities))
-    return out
+    return sortedFlatSprintRoots(model, this.plugin.settings.statuses, this.plugin.settings.priorities)
   }
 
   private hierarchyParts(ref: TaskRef): string[] {
@@ -679,14 +608,16 @@ export class SprintView extends ItemView {
   /**
    * Leading tabular effort cell for Matrix Flat.
    * Always mounts the cell so the hours column lines up when a row has no hours.
+   * Real parents with children use own hours; groupingOnly uses quadrant-local child sum.
    */
   private renderFlatEffort(main: HTMLElement, node: SprintTaskNode): void {
-    const label = formatEffortLabel(node.logged, node.estimate)
+    const { logged, estimate } = flatRowEffort(node, this.paintDetails)
+    const label = formatEffortLabel(logged, estimate)
     const el = main.createSpan({ cls: 'pm-sprint-effort', text: label ?? '' })
     if (!label) return
-    const band = effortBand(effortWeight(node.logged, node.estimate))
+    const band = effortBand(effortWeight(logged, estimate))
     if (band !== 'none') el.addClass(`pm-sprint-effort--${band}`)
-    if (isEffortOverrun(node.logged, node.estimate)) el.addClass('pm-sprint-effort--overrun')
+    if (isEffortOverrun(logged, estimate)) el.addClass('pm-sprint-effort--overrun')
   }
 
   private renderProject(parent: HTMLElement, node: SprintProjectNode, depth: number): void {
@@ -730,6 +661,7 @@ export class SprintView extends ItemView {
     if (!flat && depth > 0) row.addClass('pm-sprint-task--child')
     if (node.groupingOnly) row.addClass('pm-sprint-task--group')
     const hasChildren = !flat && node.children.length > 0
+    const nestedCount = flat ? flatNestedCardCount(node) : 0
     const collapsed = hasChildren && this.isTaskCollapsed(node)
     if (hasChildren) row.addClass('pm-sprint-task--collapsible')
     if (hasChildren) {
@@ -744,15 +676,28 @@ export class SprintView extends ItemView {
     }
 
     const main = flat ? row.createDiv('pm-sprint-task-main') : row
-    if (!node.groupingOnly) {
+    if (flat) {
+      // Hours column first; empty status cell keeps the grid when groupingOnly.
+      this.renderFlatEffort(main, node)
+      const statusHost = main.createDiv('pm-sprint-flat-status')
+      if (!node.groupingOnly) {
+        const statuses = this.plugin.settings.statuses
+        if (isTerminalStatus(node.ref.status, statuses)) row.addClass('pm-sprint-task--done')
+        renderStatusBadgeFromId(
+          statusHost,
+          node.ref.status,
+          statuses,
+          (status) => {
+            void this.changeTaskStatus(node, status)
+          },
+          'sm'
+        )
+      }
+    } else if (!node.groupingOnly) {
       const statuses = this.plugin.settings.statuses
       if (isTerminalStatus(node.ref.status, statuses)) row.addClass('pm-sprint-task--done')
-      // Flat: hours column first (fixed), then status at natural width, so short
-      // badges do not open a hole before the measure.
-      if (flat) this.renderFlatEffort(main, node)
-      const statusHost = flat ? main.createDiv('pm-sprint-flat-status') : main
       renderStatusBadgeFromId(
-        statusHost,
+        main,
         node.ref.status,
         statuses,
         (status) => {
@@ -762,6 +707,7 @@ export class SprintView extends ItemView {
       )
     }
     // Flat: title + chips pack left in one cluster so path does not pin to the far edge.
+    // Flat draws roots only; nested cards stay inside the node for rollup hours.
     const body = flat ? main.createDiv('pm-sprint-flat-body') : main
     body.createSpan({ cls: 'pm-sprint-task-title', text: node.ref.title })
     if (!node.groupingOnly) {
@@ -781,6 +727,14 @@ export class SprintView extends ItemView {
           .setSize('sm')
           .setColor('var(--color-green)')
           .setTooltip('Subtask')
+      }
+      if (flat && nestedCount > 0) {
+        new Chip(meta)
+          .setLabel(`${nestedCount} sub`)
+          .setVariant('solid')
+          .setSize('sm')
+          .setColor('var(--color-green)')
+          .setTooltip(`${nestedCount} nested cards in this quadrant`)
       }
       const lane = sprintMembership(node.ref.tags)
       if (lane === 'next' || (!flat && lane === 'current')) {
@@ -808,6 +762,21 @@ export class SprintView extends ItemView {
           .setFilled(true)
           .setColor(this.pathChipColor(node.ref))
       }
+    } else if (flat) {
+      const meta = body.createDiv('pm-sprint-task-meta')
+      if (nestedCount > 0) {
+        new Chip(meta)
+          .setLabel(`${nestedCount} sub`)
+          .setVariant('solid')
+          .setSize('sm')
+          .setColor('var(--color-green)')
+          .setTooltip(`${nestedCount} nested cards in this quadrant`)
+      }
+      new Chip(body)
+        .setLabel(this.pathLabel(node.ref))
+        .setSize('sm')
+        .setFilled(true)
+        .setColor(this.pathChipColor(node.ref))
     } else {
       renderTimeChip(main, node.logged, node.estimate, 'sm')
     }
@@ -822,8 +791,17 @@ export class SprintView extends ItemView {
         if (target.closest('.pm-chip--interactive')) return
         void this.openTask(node)
       })
+    } else if (flat) {
+      // groupingOnly Flat row: open the parent card (children are not drawn).
+      row.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement
+        if (target.closest('.pm-chip--interactive')) return
+        void this.openTask(node)
+      })
     }
-    if (flat || collapsed) return
+    // Flat: roots only. Nested cards stay rolled into this row's hours.
+    if (flat) return
+    if (collapsed) return
     for (const child of node.children) this.renderTask(parent, child, depth + 1)
   }
 

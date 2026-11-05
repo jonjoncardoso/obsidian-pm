@@ -296,6 +296,232 @@ tags:
     expect(matrix.unsorted.projects[0].tasks.map((t) => t.ref.id)).toEqual(['unsorted'])
   })
 
+  it('nests same-quadrant subtasks under their parent root', async () => {
+    await vault.create('Projects/Research/Research.md', projectNote('research', 'Research'))
+    await vault.create(
+      'Projects/Research/_tasks/agg.md',
+      `---
+pm-task: true
+id: agg
+projectId: research
+title: Aggregator
+status: in-progress
+priority: high
+type: task
+tags:
+  - ${TAG_SPRINT_CURRENT}
+customFields:
+  urgency: High
+---
+
+`
+    )
+    await vault.create(
+      'Projects/Research/_tasks/sub-a.md',
+      `---
+pm-task: true
+id: sub-a
+projectId: research
+title: Sub A
+status: todo
+priority: high
+type: subtask
+parentId: agg
+tags:
+  - ${TAG_SPRINT_CURRENT}
+timeEstimate: 1
+customFields:
+  urgency: High
+---
+
+`
+    )
+    await vault.create(
+      'Projects/Research/_tasks/sub-b.md',
+      `---
+pm-task: true
+id: sub-b
+projectId: research
+title: Sub B
+status: todo
+priority: high
+type: subtask
+parentId: agg
+tags:
+  - ${TAG_SPRINT_CURRENT}
+timeEstimate: 2
+customFields:
+  urgency: High
+---
+
+`
+    )
+    index.build()
+    const details = new Map([
+      ['agg', { timeLogs: [], timeEstimate: undefined, urgency: 'High' }],
+      ['sub-a', { timeLogs: [], timeEstimate: 1, urgency: 'High' }],
+      ['sub-b', { timeLogs: [], timeEstimate: 2, urgency: 'High' }]
+    ])
+    const matrix = buildEisenhowerMatrix(index, details)
+    expect(matrix.quadrants.I.cardCount).toBe(3)
+    const roots = matrix.quadrants.I.projects[0].tasks
+    expect(roots.map((t) => t.ref.id)).toEqual(['agg'])
+    expect(roots[0].groupingOnly).toBe(false)
+    expect(roots[0].children.map((t) => t.ref.id).sort()).toEqual(['sub-a', 'sub-b'])
+  })
+
+  it('splits sibling subtasks across quadrants with groupingOnly parents and local hours', async () => {
+    await vault.create('Projects/Research/Research.md', projectNote('research', 'Research'))
+    await vault.create(
+      'Projects/Research/_tasks/agg.md',
+      `---
+pm-task: true
+id: agg
+projectId: research
+title: Aggregator
+status: done
+priority: high
+type: task
+---
+
+`
+    )
+    await vault.create(
+      'Projects/Research/_tasks/sub-i.md',
+      `---
+pm-task: true
+id: sub-i
+projectId: research
+title: Urgent sub
+status: todo
+priority: high
+type: subtask
+parentId: agg
+tags:
+  - ${TAG_SPRINT_CURRENT}
+timeEstimate: 1
+customFields:
+  urgency: High
+---
+
+`
+    )
+    await vault.create(
+      'Projects/Research/_tasks/sub-ii.md',
+      `---
+pm-task: true
+id: sub-ii
+projectId: research
+title: Schedule sub
+status: todo
+priority: high
+type: subtask
+parentId: agg
+tags:
+  - ${TAG_SPRINT_CURRENT}
+timeEstimate: 2
+customFields:
+  urgency: Medium
+---
+
+`
+    )
+    index.build()
+    const details = new Map([
+      ['agg', { timeLogs: [], timeEstimate: undefined, urgency: undefined }],
+      [
+        'sub-i',
+        {
+          timeLogs: [{ date: '2026-11-05', hours: 1, note: 'agent: a' }],
+          timeEstimate: 1,
+          urgency: 'High'
+        }
+      ],
+      [
+        'sub-ii',
+        {
+          timeLogs: [{ date: '2026-11-05', hours: 0.5, note: 'agent: b' }],
+          timeEstimate: 2,
+          urgency: 'Medium'
+        }
+      ]
+    ])
+    const matrix = buildEisenhowerMatrix(index, details)
+    expect(matrix.quadrants.I.cardCount).toBe(1)
+    expect(matrix.quadrants.II.cardCount).toBe(1)
+    const qi = matrix.quadrants.I.projects[0].tasks[0]
+    expect(qi.groupingOnly).toBe(true)
+    expect(qi.ref.id).toBe('agg')
+    expect(qi.children.map((t) => t.ref.id)).toEqual(['sub-i'])
+    expect(qi.logged).toBe(1)
+    expect(qi.estimate).toBe(1)
+    const qii = matrix.quadrants.II.projects[0].tasks[0]
+    expect(qii.groupingOnly).toBe(true)
+    expect(qii.ref.id).toBe('agg')
+    expect(qii.children.map((t) => t.ref.id)).toEqual(['sub-ii'])
+    expect(qii.logged).toBe(0.5)
+    expect(qii.estimate).toBe(2)
+  })
+
+  it('keeps a parent member in its quadrant and injects groupingOnly where only the child sits', async () => {
+    await vault.create('Projects/Research/Research.md', projectNote('research', 'Research'))
+    await vault.create(
+      'Projects/Research/_tasks/parent.md',
+      `---
+pm-task: true
+id: parent
+projectId: research
+title: Parent member
+status: todo
+priority: high
+type: task
+tags:
+  - ${TAG_SPRINT_CURRENT}
+timeEstimate: 3
+customFields:
+  urgency: High
+---
+
+`
+    )
+    await vault.create(
+      'Projects/Research/_tasks/child.md',
+      `---
+pm-task: true
+id: child
+projectId: research
+title: Child elsewhere
+status: todo
+priority: high
+type: subtask
+parentId: parent
+tags:
+  - ${TAG_SPRINT_CURRENT}
+timeEstimate: 1
+customFields:
+  urgency: Medium
+---
+
+`
+    )
+    index.build()
+    const details = new Map([
+      ['parent', { timeLogs: [], timeEstimate: 3, urgency: 'High' }],
+      ['child', { timeLogs: [], timeEstimate: 1, urgency: 'Medium' }]
+    ])
+    const matrix = buildEisenhowerMatrix(index, details)
+    const qi = matrix.quadrants.I.projects[0].tasks
+    expect(qi.map((t) => t.ref.id)).toEqual(['parent'])
+    expect(qi[0].groupingOnly).toBe(false)
+    expect(qi[0].children).toHaveLength(0)
+    expect(qi[0].estimate).toBe(3)
+    const qii = matrix.quadrants.II.projects[0].tasks[0]
+    expect(qii.groupingOnly).toBe(true)
+    expect(qii.ref.id).toBe('parent')
+    expect(qii.children.map((t) => t.ref.id)).toEqual(['child'])
+    expect(qii.estimate).toBe(1)
+  })
+
   it('accepts a prefiltered member list so Hide done can drop terminal cards', async () => {
     await vault.create('Projects/Research/Research.md', projectNote('research', 'Research'))
     await vault.create(
