@@ -5,6 +5,7 @@ import {
   buildHoursStrip,
   buildStepSquares,
   buildTriageCards,
+  dueWithinDays,
   nextDeadline,
   parseTemplateStepId,
   stepIdParts
@@ -227,5 +228,44 @@ describe('buildTriageCards', () => {
     })
     const cards = buildTriageCards([doneParent, open], statuses, '2026-11-11')
     expect(cards.map((c) => c.parent.id)).toEqual(['open'])
+  })
+})
+
+describe('triage fills for blocked and later steps', () => {
+  function letterParent(): Task {
+    return makeTask({
+      id: 'kid',
+      title: 'Kid: reference letters',
+      subtasks: [
+        step('k1', '1. Reply to first ask', '01-reply-first-ask', 'done'),
+        step('k2', '2. Collect materials', '02-collect-materials', 'done'),
+        step('k3', '3. Ingest evidence', '03-ingest-evidence', 'todo', '2026-11-12'),
+        step('k4', '4. Draft letter', '04-draft-letter', 'blocked'),
+        step('k5', '5. Portal / submit', '05-portal-submit', 'blocked'),
+        step('k6', '6. Close loop with student', '06-close-loop', 'todo')
+      ]
+    })
+  }
+
+  it('marks blocked steps blocked', () => {
+    const squares = buildStepSquares(letterParent(), statuses)
+    expect(squares[3].fill).toBe('blocked')
+    expect(squares[4].fill).toBe('blocked')
+  })
+
+  it('keeps only the card next step current', () => {
+    const [card] = buildTriageCards([letterParent()], statuses, '2026-11-11')
+    expect(card.currentStepIndex).toBe(2)
+    expect(card.steps.map((s) => s.fill)).toEqual(['done', 'done', 'current', 'blocked', 'blocked', 'empty'])
+  })
+})
+
+describe('dueWithinDays', () => {
+  it('is true for today, three days ahead and overdue, false a week ahead', () => {
+    expect(dueWithinDays('2026-11-11', '2026-11-11', 3)).toBe(true)
+    expect(dueWithinDays('2026-11-14', '2026-11-11', 3)).toBe(true)
+    expect(dueWithinDays('2026-11-09', '2026-11-11', 3)).toBe(true)
+    expect(dueWithinDays('2026-11-18', '2026-11-11', 3)).toBe(false)
+    expect(dueWithinDays('', '2026-11-11', 3)).toBe(false)
   })
 })
