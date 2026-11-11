@@ -346,7 +346,8 @@ export class ProjectEditView extends ItemView {
     row('Default tasks view', 'defaultView', [
       { value: 'table', label: 'Table' },
       { value: 'gantt', label: 'Gantt' },
-      { value: 'kanban', label: 'Board' }
+      { value: 'kanban', label: 'Board' },
+      { value: 'triage', label: 'Triage' }
     ])
     row(
       'Priority icons',
@@ -385,6 +386,10 @@ export class ProjectEditView extends ItemView {
     row('Description preview on board', 'kanbanShowDescriptionPreview', [
       { value: true, label: 'Show' },
       { value: false, label: 'Hide' }
+    ])
+    row('Attention Triage view', 'attentionTriage', [
+      { value: true, label: 'On' },
+      { value: false, label: 'Off' }
     ])
   }
 

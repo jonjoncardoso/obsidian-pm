@@ -42,7 +42,8 @@ export function resolveProjectConfig(
     showSubtreeConnections: config?.showSubtreeConnections ?? settings.showSubtreeConnections,
     lineBorders: config?.lineBorders ?? settings.lineBorders,
     kanbanShowSubtasks: config?.kanbanShowSubtasks ?? settings.kanbanShowSubtasks,
-    kanbanShowDescriptionPreview: config?.kanbanShowDescriptionPreview ?? settings.kanbanShowDescriptionPreview
+    kanbanShowDescriptionPreview: config?.kanbanShowDescriptionPreview ?? settings.kanbanShowDescriptionPreview,
+    attentionTriage: config?.attentionTriage === true
   }
 }
 

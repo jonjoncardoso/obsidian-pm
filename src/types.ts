@@ -5,7 +5,7 @@ export type TaskStatus = string
 export type TaskPriority = string
 export type GanttGranularity = 'day' | 'week' | 'month' | 'quarter' | 'year'
 export type GanttWeekLabel = 'weekNumber' | 'dateRange' | 'both'
-export type ViewMode = 'table' | 'gantt' | 'kanban'
+export type ViewMode = 'table' | 'gantt' | 'kanban' | 'triage'
 export type SprintViewMode = 'list' | 'matrix'
 /** Matrix card layout: project tree with collapses, or flat rows with path chips. */
 export type SprintMatrixLayout = 'tree' | 'flat'
@@ -147,6 +147,8 @@ export interface ProjectConfig {
   lineBorders?: LineBorders
   kanbanShowSubtasks?: boolean
   kanbanShowDescriptionPreview?: boolean
+  /** When true, the project toolbar offers the Triage view. */
+  attentionTriage?: boolean
 }
 
 /**
@@ -166,6 +168,7 @@ export interface ResolvedProjectConfig {
   lineBorders: LineBorders
   kanbanShowSubtasks: boolean
   kanbanShowDescriptionPreview: boolean
+  attentionTriage: boolean
 }
 
 export interface PriorityConfig {

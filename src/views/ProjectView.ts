@@ -1,4 +1,4 @@
-import { ButtonComponent, ExtraButtonComponent, ItemView, Menu, WorkspaceLeaf } from 'obsidian'
+import { ButtonComponent, ExtraButtonComponent, ItemView, Menu, Modal, Setting, WorkspaceLeaf } from 'obsidian'
 import type PMPlugin from '../main'
 import { type Project, type ViewMode, type FilterState, type SavedView, makeDefaultFilter, makeId } from '../types'
 import {
@@ -16,6 +16,7 @@ import { TableView } from './table/TableView'
 import type { TableViewState } from './table/TableView'
 import { GanttView } from './gantt/GanttView'
 import { KanbanView } from './KanbanView'
+import { ReferencesTriageView } from './ReferencesTriageView'
 import { openTaskModal } from '../ui/ModalFactory'
 import { ChipButton } from '../ui/primitives/ChipButton'
 import { ViewSwitcher } from '../ui/primitives/ViewSwitcher'
@@ -403,12 +404,16 @@ export class ProjectView extends ItemView {
     }
     this.renderScopeSwitcher(left)
 
+    const viewOptions: { id: ViewMode; icon: string; label: string }[] = [
+      { id: 'table', icon: 'table', label: 'Table' },
+      { id: 'gantt', icon: 'git-fork', label: 'Gantt' },
+      { id: 'kanban', icon: 'layout-dashboard', label: 'Board' }
+    ]
+    if (this.projectScope?.config.attentionTriage) {
+      viewOptions.push({ id: 'triage', icon: 'layout-list', label: 'Triage' })
+    }
     new ViewSwitcher<ViewMode>(this.toolbarEl, {
-      options: [
-        { id: 'table', icon: 'table', label: 'Table' },
-        { id: 'gantt', icon: 'git-fork', label: 'Gantt' },
-        { id: 'kanban', icon: 'layout-dashboard', label: 'Board' }
-      ],
+      options: viewOptions,
       active: this.currentView,
       onChange: (mode) => {
         this.currentView = mode
@@ -523,6 +528,12 @@ export class ProjectView extends ItemView {
     this.bodyEl.empty()
     this.subview = null
 
+    if (this.currentView === 'triage' && !scope.config.attentionTriage) {
+      this.showTriageUnavailableModal()
+      this.currentView = 'table'
+      this.renderProjectToolbar()
+    }
+
     switch (this.currentView) {
       case 'table': {
         const table = new TableView(
@@ -547,9 +558,31 @@ export class ProjectView extends ItemView {
       case 'kanban':
         this.subview = new KanbanView(this.bodyEl, scope, this.plugin, () => this.refreshProject(), this.filter)
         break
+      case 'triage':
+        this.subview = new ReferencesTriageView(
+          this.bodyEl,
+          scope,
+          this.plugin,
+          () => this.refreshProject(),
+          this.filter
+        )
+        break
     }
     this.bodyEl.toggleClass('pm-content--kanban', this.currentView === 'kanban')
+    this.bodyEl.toggleClass('pm-content--triage', this.currentView === 'triage')
     this.subview?.render()
+  }
+
+  private showTriageUnavailableModal(): void {
+    const modal = new Modal(this.app)
+    modal.titleEl.setText('Triage not enabled')
+    modal.contentEl.createEl('p', {
+      text: 'Attention Triage is only available on projects that turn it on in project settings. Opening the Table view instead.'
+    })
+    new Setting(modal.contentEl).addButton((btn) =>
+      btn.setButtonText('OK').setCta().onClick(() => modal.close())
+    )
+    modal.open()
   }
 
   /**

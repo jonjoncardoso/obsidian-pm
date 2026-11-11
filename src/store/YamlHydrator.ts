@@ -176,7 +176,12 @@ function hydrateProjectConfig(raw: unknown): ProjectConfig | undefined {
   }
   const hidden = stringList(r.hiddenCustomFields)
   if (hidden.length) config.hiddenCustomFields = hidden
-  if (r.defaultView === 'table' || r.defaultView === 'gantt' || r.defaultView === 'kanban') {
+  if (
+    r.defaultView === 'table' ||
+    r.defaultView === 'gantt' ||
+    r.defaultView === 'kanban' ||
+    r.defaultView === 'triage'
+  ) {
     config.defaultView = r.defaultView
   }
   if (typeof r.autoSchedule === 'boolean') config.autoSchedule = r.autoSchedule
@@ -197,6 +202,7 @@ function hydrateProjectConfig(raw: unknown): ProjectConfig | undefined {
   if (typeof r.kanbanShowDescriptionPreview === 'boolean') {
     config.kanbanShowDescriptionPreview = r.kanbanShowDescriptionPreview
   }
+  if (typeof r.attentionTriage === 'boolean') config.attentionTriage = r.attentionTriage
   return Object.keys(config).length ? config : undefined
 }
 
