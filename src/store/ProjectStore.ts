@@ -58,20 +58,37 @@ function patchNeedsBodyRewrite(patch: Partial<Task>): boolean {
 /** A basename of this exact length that prefixes the title's slug is kept as-is. */
 const LEGACY_SLUG_CAP = 40
 
-/** New tasks get the bare slug; an existing file stays put while its name still matches the title. */
-function resolveTaskPath(task: Task, folder: string, previousPath: string | undefined): string {
+/**
+ * New tasks get the bare slug; an existing file stays put while its name still matches the title.
+ *
+ * When the title's slug already belongs to another file (two cards with one title in one folder,
+ * such as the same step under different parents), an existing task keeps its current file and a
+ * new task falls back to the slug plus the first eight characters of its id. `isTaken` reports
+ * whether a path is already used by another file or by another task in the same save.
+ */
+function resolveTaskPath(
+  task: Task,
+  folder: string,
+  previousPath: string | undefined,
+  isTaken: (path: string) => boolean = () => false
+): string {
   const desired = taskFilePath(task.title, folder)
-  if (!previousPath) return desired
   const desiredBasename = desired.slice(desired.lastIndexOf('/') + 1).replace(/\.md$/, '')
-  const previousFolder = previousPath.slice(0, previousPath.lastIndexOf('/'))
-  const previousBasename = previousPath.slice(previousPath.lastIndexOf('/') + 1).replace(/\.md$/, '')
-  if (previousFolder !== folder) return desired
   const legacyBasename = `${desiredBasename}-${task.id.slice(0, 8)}`
+  const previousFolder = previousPath ? previousPath.slice(0, previousPath.lastIndexOf('/')) : undefined
+  const choose = (candidate: string): string => {
+    if (candidate === previousPath || !isTaken(normalizePath(candidate))) return candidate
+    if (previousPath && previousFolder === folder) return previousPath
+    return `${folder}/${legacyBasename}.md`
+  }
+  if (!previousPath) return choose(desired)
+  const previousBasename = previousPath.slice(previousPath.lastIndexOf('/') + 1).replace(/\.md$/, '')
+  if (previousFolder !== folder) return choose(desired)
   if (previousBasename === legacyBasename) return previousPath
   if (previousBasename.length === LEGACY_SLUG_CAP && previousBasename === desiredBasename.slice(0, LEGACY_SLUG_CAP)) {
     return previousPath
   }
-  return desired
+  return choose(desired)
 }
 
 export class TaskFileNameConflictError extends Error {
@@ -651,7 +668,7 @@ export class ProjectStore implements TaskSource {
     }
     if (dirty.size === 0) return
 
-    const jobs: { task: Task; parentTask: Task | null; folder: string; kind: DirtyKind }[] = []
+    const jobs: { task: Task; parentTask: Task | null; folder: string; kind: DirtyKind; path: string }[] = []
     const targetPaths = new Set<string>()
     let hasArchived = false
     for (const [id, kind] of dirty) {
@@ -662,10 +679,12 @@ export class ProjectStore implements TaskSource {
       if (task.archived) hasArchived = true
       // Two dirty tasks resolving to one file would race below into a generic
       // create error; catching it here keeps the typed one.
-      const path = normalizePath(resolveTaskPath(task, targetFolder, task.filePath))
+      const path = normalizePath(
+        resolveTaskPath(task, targetFolder, task.filePath, (p) => targetPaths.has(p) || this.isVaultFile(p))
+      )
       if (targetPaths.has(path)) throw new TaskFileNameConflictError(path)
       targetPaths.add(path)
-      jobs.push({ task, parentTask: parentId ? findTaskById(project, parentId) : null, folder: targetFolder, kind })
+      jobs.push({ task, parentTask: parentId ? findTaskById(project, parentId) : null, folder: targetFolder, kind, path })
     }
     if (hasArchived) await this.ensureFolder(normalizePath(folder + '/Archive'))
 
@@ -673,7 +692,7 @@ export class ProjectStore implements TaskSource {
     const batchSize = 16
     for (let i = 0; i < jobs.length; i += batchSize) {
       const results = await Promise.allSettled(
-        jobs.slice(i, i + batchSize).map((j) => this.saveTaskFile(j.task, project, j.parentTask, j.folder, j.kind))
+        jobs.slice(i, i + batchSize).map((j) => this.saveTaskFile(j.task, project, j.parentTask, j.folder, j.kind, j.path))
       )
       for (const r of results) {
         if (r.status === 'rejected') errors.push(r.reason instanceof Error ? r.reason : new Error(String(r.reason)))
@@ -690,10 +709,12 @@ export class ProjectStore implements TaskSource {
     project: Project,
     parentTask: Task | null,
     folder: string,
-    kind: DirtyKind
+    kind: DirtyKind,
+    resolvedPath?: string
   ): Promise<void> {
     const previousPath = task.filePath
-    const filePath = normalizePath(resolveTaskPath(task, folder, previousPath))
+    const filePath =
+      resolvedPath ?? normalizePath(resolveTaskPath(task, folder, previousPath, (p) => this.isVaultFile(p)))
     const renamed = previousPath !== undefined && previousPath !== filePath
 
     try {
@@ -760,11 +781,15 @@ export class ProjectStore implements TaskSource {
     }
   }
 
+  private isVaultFile(path: string): boolean {
+    return this.app.vault.getAbstractFileByPath(normalizePath(path)) instanceof TFile
+  }
+
   /** Pre-flight check so callers can surface the conflict inline instead of on save. */
   findTaskFileConflict(project: Project, task: Task): TaskFileNameConflictError | null {
     const baseFolder = projectTaskFolder(this.app, project.filePath)
     const folder = task.archived ? normalizePath(baseFolder + '/Archive') : baseFolder
-    const desired = normalizePath(resolveTaskPath(task, folder, task.filePath))
+    const desired = normalizePath(resolveTaskPath(task, folder, task.filePath, (p) => this.isVaultFile(p)))
     if (desired === task.filePath) return null
     const existing = this.app.vault.getAbstractFileByPath(desired)
     return existing instanceof TFile ? new TaskFileNameConflictError(desired) : null

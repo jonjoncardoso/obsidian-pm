@@ -1588,3 +1588,35 @@ describe('ProjectStore.duplicateProject', () => {
     await expect(store.duplicateProject(source, 'Roadmap')).rejects.toThrow('already exists')
   })
 })
+
+describe('ProjectStore same title under different parents', () => {
+  it('saves two same-titled subtasks to different files', async () => {
+    const { store, vault } = newStore()
+    const project = await store.createProject('Refs', 'Projects')
+    const amy = await addNamed(store, project, 'Amy: reference letters')
+    const ben = await addNamed(store, project, 'Ben: reference letters')
+    const amyStep = await addNamed(store, project, '2. Collect materials', amy.id)
+    const benStep = await addNamed(store, project, '2. Collect materials', ben.id)
+
+    const amyPath = expectDefined(amyStep.filePath)
+    const benPath = expectDefined(benStep.filePath)
+    expect(amyPath).not.toBe(benPath)
+    expect(vault.getAbstractFileByPath(amyPath)).toBeInstanceOf(TFile)
+    expect(vault.getAbstractFileByPath(benPath)).toBeInstanceOf(TFile)
+  })
+
+  it('saves a date change on a same-titled card without a conflict and keeps its file', async () => {
+    const { store } = newStore()
+    const project = await store.createProject('Refs2', 'Projects')
+    const amy = await addNamed(store, project, 'Amy: reference letters')
+    const ben = await addNamed(store, project, 'Ben: reference letters')
+    await addNamed(store, project, '2. Collect materials', amy.id)
+    const benStep = await addNamed(store, project, '2. Collect materials', ben.id)
+    const before = benStep.filePath
+
+    await expect(store.updateTask(project, benStep.id, { due: '2026-12-01' })).resolves.not.toThrow()
+    expect(benStep.filePath).toBe(before)
+    expect(store.findTaskFileConflict(project, benStep)).toBeNull()
+  })
+})
+
