@@ -55,7 +55,7 @@
 }
 
 .pm-triage-card {
-  width: 220px;
+  width: 253px;
   display: flex;
   flex-direction: column;
   padding: 10px 12px;
@@ -218,6 +218,11 @@
   align-items: center;
   min-height: 1.2em;
   margin-top: auto;
+}
+
+.pm-triage-due-label {
+  font-size: 11px;
+  color: var(--text-faint);
 }
 
 .pm-triage-due {

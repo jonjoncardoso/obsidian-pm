@@ -279,6 +279,24 @@ function nextIncompleteTask(step: TriageStepSquare | null, statuses: StatusConfi
   return null
 }
 
+/**
+ * Earliest due on an incomplete step or programme pane.
+ * Falls back to the parent due when no open step has a date (unlike subtreeDue, which takes the latest).
+ */
+export function nextDeadline(parent: Task, steps: TriageStepSquare[], statuses: StatusConfig[]): string {
+  let earliest = ''
+  for (const step of steps) {
+    for (const pane of step.panes) {
+      if (pane.task.status === 'cancelled') continue
+      if (isTerminalStatus(pane.task.status, statuses)) continue
+      const due = pane.task.due
+      if (!due) continue
+      if (!earliest || due < earliest) earliest = due
+    }
+  }
+  return earliest || parent.due || ''
+}
+
 export function assignLane(
   parent: Task,
   steps: TriageStepSquare[],
@@ -293,7 +311,7 @@ export function assignLane(
   const stepId = parseTemplateStepId(nextTask.description)
   const kind = kindOf(nextTask, stepId)
   const urgency = String(parent.customFields.urgency ?? '')
-  const until = daysUntil(parent.due || nextTask.due, today)
+  const until = daysUntil(nextDeadline(parent, steps, statuses), today)
 
   if (kind === 'collect') return 'waiting-student'
 
@@ -347,7 +365,7 @@ export function buildTriageCards(roots: Task[], statuses: StatusConfig[], today:
       currentStepIndex,
       nextAction: nextTask?.title ?? parent.title,
       nextTask,
-      due: parent.due || nextTask?.due || ''
+      due: nextDeadline(parent, steps, statuses)
     })
   }
   return cards

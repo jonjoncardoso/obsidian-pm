@@ -102,6 +102,7 @@ export class ReferencesTriageView implements SubView {
 
     const meta = el.createDiv('pm-triage-card-meta')
     if (card.due) {
+      meta.createSpan({ text: 'Next deadline', cls: 'pm-triage-due-label' })
       const due = meta.createSpan({ text: formatTriageDate(card.due), cls: 'pm-triage-due' })
       if (dueUrgency({ ...card.parent, due: card.due }, this.scope.config.statuses) === 'overdue') {
         due.addClass('pm-triage-due--overdue')

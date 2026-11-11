@@ -5,6 +5,7 @@ import {
   buildHoursStrip,
   buildStepSquares,
   buildTriageCards,
+  nextDeadline,
   parseTemplateStepId,
   stepIdParts
 } from './attentionTriage'
@@ -167,6 +168,34 @@ describe('assignLane', () => {
       statuses
     )
     expect(assignLane(parent, steps, statuses, '2026-11-11')).toBe('acts-now')
+  })
+})
+
+describe('nextDeadline', () => {
+  it('picks the earliest incomplete step due, not the parent final due', () => {
+    const parent = makeTask({
+      id: 'p',
+      title: 'Parent',
+      due: '2026-12-20',
+      subtasks: [
+        step('r', '1. Reply', '01-reply-first-ask', 'done', '2026-10-01'),
+        step('d', '4. Draft', '04-draft-letter', 'todo', '2026-11-15'),
+        step('portal', '5. Portal', '05-portal-submit', 'todo', '2026-12-01')
+      ]
+    })
+    const steps = buildStepSquares(parent, statuses)
+    expect(nextDeadline(parent, steps, statuses)).toBe('2026-11-15')
+  })
+
+  it('falls back to the parent due when open steps have none', () => {
+    const parent = makeTask({
+      id: 'p',
+      title: 'Parent',
+      due: '2026-12-20',
+      subtasks: [step('d', '4. Draft', '04-draft-letter', 'todo')]
+    })
+    const steps = buildStepSquares(parent, statuses)
+    expect(nextDeadline(parent, steps, statuses)).toBe('2026-12-20')
   })
 })
 
