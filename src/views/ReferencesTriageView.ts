@@ -1,4 +1,4 @@
-import { Menu } from 'obsidian'
+import { Menu, setIcon } from 'obsidian'
 import type PMPlugin from '../main'
 import type { FilterState, Task } from '../types'
 import { personKeyer, type ProjectScope } from '../store'
@@ -6,6 +6,7 @@ import { matchesFilter } from '../store/TaskFilter'
 import {
   TRIAGE_LANES,
   buildTriageCards,
+  dueWithinDays,
   groupByLane,
   type StepFill,
   type TriageCard
@@ -64,7 +65,7 @@ export class ReferencesTriageView implements SubView {
 
     const board = this.container.createDiv('pm-triage-board')
     for (const lane of TRIAGE_LANES) {
-      const laneEl = board.createDiv('pm-triage-lane')
+      const laneEl = board.createDiv(`pm-triage-lane pm-triage-lane--${lane.id}`)
       const header = laneEl.createDiv('pm-triage-lane-header')
       header.createSpan({ text: lane.label, cls: 'pm-triage-lane-title' })
       header.createSpan({ text: String(groups[lane.id].length), cls: 'pm-triage-lane-count' })
@@ -103,10 +104,15 @@ export class ReferencesTriageView implements SubView {
     const meta = el.createDiv('pm-triage-card-meta')
     if (card.due) {
       meta.createSpan({ text: 'Next deadline', cls: 'pm-triage-due-label' })
-      const due = meta.createSpan({ text: formatTriageDate(card.due), cls: 'pm-triage-due' })
+      const soon = dueWithinDays(card.due, todayIso(), 3)
+      const dateText = formatTriageDate(card.due)
+      const due = meta.createSpan({ text: soon ? `⚠️ ${dateText}` : dateText, cls: 'pm-triage-due' })
       if (dueUrgency({ ...card.parent, due: card.due }, this.scope.config.statuses) === 'overdue') {
         due.addClass('pm-triage-due--overdue')
+      } else if (soon) {
+        due.addClass('pm-triage-due--soon')
       }
+      if (soon) due.setAttr('aria-label', `Next deadline ${dateText}, within three days`)
     }
 
     el.addEventListener('click', () => this.openTask(card.parent))
@@ -138,12 +144,27 @@ export class ReferencesTriageView implements SubView {
           square.addClass('pm-triage-step--active')
         }
         if (multi && pane.label) {
-          square.createSpan({ text: pane.label, cls: 'pm-triage-step-label' })
+          const text = pane.fill === 'done' ? `✓${pane.label}` : pane.label
+          square.createSpan({ text, cls: 'pm-triage-step-label' })
+        } else if (pane.fill === 'done') {
+          setIcon(square.createSpan('pm-triage-step-glyph'), 'check')
+        } else if (pane.fill === 'blocked') {
+          setIcon(square.createSpan('pm-triage-step-glyph'), 'lock')
+        } else {
+          square.createSpan({ text: String(index + 1), cls: 'pm-triage-step-glyph pm-triage-step-number' })
         }
-        square.setAttr('title', pane.task.title)
+        const label = this.stepLabel(pane.task)
+        square.setAttrs({ title: label, 'aria-label': label, role: 'button', tabindex: '0' })
         square.addEventListener('click', (e) => {
           e.stopPropagation()
           this.openTask(pane.task)
+        })
+        square.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            e.stopPropagation()
+            this.openTask(pane.task)
+          }
         })
 
         if (index === card.currentStepIndex && pane.fill === 'current' && card.hours.total > 0) {
@@ -151,6 +172,13 @@ export class ReferencesTriageView implements SubView {
         }
       })
     })
+  }
+
+  /** "3. Ingest evidence, To Do, due 12 Nov 2026" for the tooltip and screen readers. */
+  private stepLabel(task: Task): string {
+    const status = this.scope.config.statuses.find((s) => s.id === task.status)?.label ?? task.status
+    const due = task.due ? `, due ${formatTriageDate(task.due)}` : ''
+    return `${task.title}, ${status}${due}`
   }
 
   private renderHoursStrip(parent: HTMLElement, filled: number, total: number): void {
@@ -164,10 +192,14 @@ export class ReferencesTriageView implements SubView {
   private renderLegend(parent: HTMLElement): void {
     parent.createDiv({ text: 'Legend', cls: 'pm-triage-legend-title' })
     const row = parent.createDiv('pm-triage-legend-row')
-    addLegendSwatch(row, 'empty', 'Not started')
-    addLegendSwatch(row, 'current', 'Current or due soon')
-    addLegendSwatch(row, 'done', 'Done')
-    addLegendSwatch(row, 'waiting', 'Waiting / cancelled')
+    addLegendSwatch(row, 'empty', 'Not started', '1')
+    addLegendSwatch(row, 'current', 'Next step', '3')
+    addLegendSwatch(row, 'done', 'Done', 'check')
+    addLegendSwatch(row, 'blocked', 'Blocked until an earlier step is done', 'lock')
+    addLegendSwatch(row, 'waiting', 'Cancelled')
+    const warn = row.createDiv('pm-triage-legend-item')
+    warn.createSpan({ text: '⚠️ 12 Nov', cls: 'pm-triage-due pm-triage-due--soon' })
+    warn.createSpan({ text: 'Next deadline within three days', cls: 'pm-triage-legend-label' })
     const split = row.createDiv('pm-triage-legend-item')
     const stack = split.createDiv('pm-triage-legend-stack')
     for (const label of ['5.1', '5.2']) {
@@ -175,13 +207,13 @@ export class ReferencesTriageView implements SubView {
       sq.addClass(label === '5.1' ? 'pm-triage-step--done' : 'pm-triage-step--empty')
       sq.createSpan({ text: label, cls: 'pm-triage-step-label' })
     }
-    split.createSpan({ text: 'Programme stack opens that stage', cls: 'pm-triage-legend-label' })
+    split.createSpan({ text: '5.1, 5.2 …: one card per programme portal, under step 5', cls: 'pm-triage-legend-label' })
     const hours = row.createDiv('pm-triage-legend-item')
     const hoursSample = hours.createDiv('pm-triage-hours pm-triage-legend-hours')
     hoursSample.createDiv('pm-triage-hour pm-triage-hour--filled')
     hoursSample.createDiv('pm-triage-hour pm-triage-hour--filled')
     hoursSample.createDiv('pm-triage-hour')
-    hours.createSpan({ text: 'Hours under the current programme', cls: 'pm-triage-legend-label' })
+    hours.createSpan({ text: 'Hours logged on the next step (filled) out of the estimate', cls: 'pm-triage-legend-label' })
   }
 
   private openTask(task: Task): void {
@@ -219,10 +251,12 @@ function collectStepTasks(roots: Task[]): Task[] {
   return out
 }
 
-function addLegendSwatch(parent: HTMLElement, fill: StepFill, label: string): void {
+function addLegendSwatch(parent: HTMLElement, fill: StepFill, label: string, glyph?: string): void {
   const item = parent.createDiv('pm-triage-legend-item')
   const swatch = item.createDiv('pm-triage-step')
   swatch.addClass(`pm-triage-step--${fill}`)
   swatch.addClass('pm-triage-legend-sample')
+  if (glyph === 'check' || glyph === 'lock') setIcon(swatch.createSpan('pm-triage-step-glyph'), glyph)
+  else if (glyph) swatch.createSpan({ text: glyph, cls: 'pm-triage-step-glyph pm-triage-step-number' })
   item.createSpan({ text: label, cls: 'pm-triage-legend-label' })
 }

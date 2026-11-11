@@ -4,7 +4,7 @@ import { subtreeLoggedHours, subtreeTimeEstimate } from './TaskTreeOps'
 
 export type TriageLaneId = 'acts-now' | 'waiting-student' | 'waiting-portal' | 'parked'
 
-export type StepFill = 'empty' | 'current' | 'done' | 'waiting'
+export type StepFill = 'empty' | 'current' | 'done' | 'waiting' | 'blocked'
 
 export interface TriagePane {
   label: string
@@ -41,7 +41,7 @@ export interface TriageCard {
 export const PIPELINE_SLOT_COUNT = 6
 
 export const TRIAGE_LANES: { id: TriageLaneId; label: string }[] = [
-  { id: 'acts-now', label: 'Jon acts now' },
+  { id: 'acts-now', label: 'Act now' },
   { id: 'waiting-student', label: 'Waiting on student' },
   { id: 'waiting-portal', label: 'Waiting on portal' },
   { id: 'parked', label: 'Parked' }
@@ -106,6 +106,7 @@ function kindOf(task: Task, stepId: string | null): 'collect' | 'portal' | 'repl
 function fillFor(task: Task, statuses: StatusConfig[], isCurrent: boolean): StepFill {
   if (task.status === 'cancelled') return 'waiting'
   if (isTerminalStatus(task.status, statuses)) return 'done'
+  if (task.status === 'blocked') return 'blocked'
   if (isCurrent) return 'current'
   return 'empty'
 }
@@ -239,9 +240,36 @@ function aggregateFill(fills: StepFill[]): StepFill {
   if (!fills.length) return 'empty'
   if (fills.every((f) => f === 'done')) return 'done'
   if (fills.some((f) => f === 'current')) return 'current'
+  if (fills.some((f) => f === 'blocked') && fills.every((f) => f === 'blocked' || f === 'done' || f === 'waiting')) {
+    return 'blocked'
+  }
   if (fills.every((f) => f === 'waiting' || f === 'done')) return 'waiting'
   if (fills.some((f) => f === 'empty' || f === 'waiting')) return 'empty'
   return 'empty'
+}
+
+/**
+ * Each slot picks its own first open task as 'current'; only the card's next step keeps that fill,
+ * so later open steps read as not started (or blocked) and not as due now.
+ */
+function settleCurrent(steps: TriageStepSquare[], currentIndex: number): void {
+  steps.forEach((step, i) => {
+    if (i === currentIndex) return
+    let changed = false
+    for (const pane of step.panes) {
+      if (pane.fill === 'current') {
+        pane.fill = 'empty'
+        changed = true
+      }
+    }
+    if (changed) step.fill = aggregateFill(step.panes.map((p) => p.fill))
+  })
+}
+
+/** True when due is within `days` days of today, overdue included. */
+export function dueWithinDays(due: string, today: string, days: number): boolean {
+  const n = daysUntil(due, today)
+  return n !== null && n <= days
 }
 
 export function buildHoursStrip(parent: Task): TriageHoursStrip {
@@ -357,9 +385,11 @@ export function buildTriageCards(roots: Task[], statuses: StatusConfig[], today:
     const currentStepIndex = nextIncompleteIndex(steps, statuses)
     const nextStep = currentStepIndex >= 0 ? steps[currentStepIndex] : null
     const nextTask = nextIncompleteTask(nextStep, statuses)
+    const lane = assignLane(parent, steps, statuses, today)
+    settleCurrent(steps, currentStepIndex)
     cards.push({
       parent,
-      lane: assignLane(parent, steps, statuses, today),
+      lane,
       steps,
       hours: buildHoursStrip(parent),
       currentStepIndex,
