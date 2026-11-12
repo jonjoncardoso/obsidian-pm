@@ -22,6 +22,7 @@ function serializeProjectConfig(config: ProjectConfig | undefined): Record<strin
     out.kanbanShowDescriptionPreview = config.kanbanShowDescriptionPreview
   }
   if (config.attentionTriage !== undefined) out.attentionTriage = config.attentionTriage
+  if (config.emailTriage !== undefined) out.emailTriage = config.emailTriage
   return Object.keys(out).length ? out : null
 }
 

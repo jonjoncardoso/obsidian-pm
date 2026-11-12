@@ -17,6 +17,7 @@ import type { TableViewState } from './table/TableView'
 import { GanttView } from './gantt/GanttView'
 import { KanbanView } from './KanbanView'
 import { ReferencesTriageView } from './ReferencesTriageView'
+import { EmailTriageView } from './EmailTriageView'
 import { openTaskModal } from '../ui/ModalFactory'
 import { ChipButton } from '../ui/primitives/ChipButton'
 import { ViewSwitcher } from '../ui/primitives/ViewSwitcher'
@@ -409,7 +410,7 @@ export class ProjectView extends ItemView {
       { id: 'gantt', icon: 'git-fork', label: 'Gantt' },
       { id: 'kanban', icon: 'layout-dashboard', label: 'Board' }
     ]
-    if (this.projectScope?.config.attentionTriage) {
+    if (this.projectScope?.config.attentionTriage || this.projectScope?.config.emailTriage) {
       viewOptions.push({ id: 'triage', icon: 'layout-list', label: 'Triage' })
     }
     new ViewSwitcher<ViewMode>(this.toolbarEl, {
@@ -528,7 +529,11 @@ export class ProjectView extends ItemView {
     this.bodyEl.empty()
     this.subview = null
 
-    if (this.currentView === 'triage' && !scope.config.attentionTriage) {
+    if (
+      this.currentView === 'triage' &&
+      !scope.config.attentionTriage &&
+      !scope.config.emailTriage
+    ) {
       this.showTriageUnavailableModal()
       this.currentView = 'table'
       this.renderProjectToolbar()
@@ -559,17 +564,20 @@ export class ProjectView extends ItemView {
         this.subview = new KanbanView(this.bodyEl, scope, this.plugin, () => this.refreshProject(), this.filter)
         break
       case 'triage':
-        this.subview = new ReferencesTriageView(
-          this.bodyEl,
-          scope,
-          this.plugin,
-          () => this.refreshProject(),
-          this.filter
-        )
+        this.subview = scope.config.emailTriage
+          ? new EmailTriageView(this.bodyEl, scope, this.plugin, () => this.refreshProject(), this.filter)
+          : new ReferencesTriageView(
+              this.bodyEl,
+              scope,
+              this.plugin,
+              () => this.refreshProject(),
+              this.filter
+            )
         break
     }
     this.bodyEl.toggleClass('pm-content--kanban', this.currentView === 'kanban')
-    this.bodyEl.toggleClass('pm-content--triage', this.currentView === 'triage')
+    this.bodyEl.toggleClass('pm-content--triage', this.currentView === 'triage' && !scope.config.emailTriage)
+    this.bodyEl.toggleClass('pm-content--email-triage', this.currentView === 'triage' && scope.config.emailTriage)
     this.subview?.render()
   }
 

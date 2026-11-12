@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-12T11:25:00Z",
+  "title": "Design System: Project Manager (fork)",
+  "extensions": {
+    "colorMeta": {
+      "terracotta": {
+        "role": "primary",
+        "displayName": "Terracotta",
+        "canonical": "#fd7452",
+        "tonalRamp": ["#3a1510", "#5c2218", "#7a3532", "#a9371b", "#fd7452", "#ff9a7a", "#ffc4b0", "#ffe8df"]
+      },
+      "ink-navy": {
+        "role": "secondary",
+        "displayName": "Ink Navy",
+        "canonical": "#001360",
+        "tonalRamp": ["#00061f", "#000b3a", "#001360", "#1a2a7a", "#3d4fa3", "#6b7bc4", "#a8b2e0", "#e4e8f6"]
+      },
+      "sage": {
+        "role": "secondary",
+        "displayName": "Sage",
+        "canonical": "#79b58d",
+        "tonalRamp": ["#1e3326", "#2f4f3a", "#5a9470", "#79b58d", "#97c7a8", "#b7d9c4", "#d6ebdd", "#eef7f1"]
+      },
+      "ochre": {
+        "role": "tertiary",
+        "displayName": "Ochre",
+        "canonical": "#a67c3d",
+        "tonalRamp": ["#2a1f10", "#4a361c", "#6e4f28", "#a67c3d", "#c4a066", "#d9c093", "#ebe0c4", "#f7f2e8"]
+      },
+      "slate": {
+        "role": "neutral",
+        "displayName": "Slate",
+        "canonical": "#6b6e66",
+        "tonalRamp": ["#1a1b19", "#2f312e", "#4a4d47", "#6b6e66", "#8f928b", "#b3b5b0", "#d5d6d3", "#efefee"]
+      }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "Card and row titles at 13px semibold." },
+      "body": { "displayName": "Body", "purpose": "Next-step lines, meta, and due dates at 12px." },
+      "label": { "displayName": "Label", "purpose": "Chips and compact measures at 11px semibold." }
+    },
+    "shadows": [
+      {
+        "name": "modal-ambient",
+        "value": "0 1px 3px var(--pm-shadow-ambient)",
+        "purpose": "Structural shadow on modals only; never on triage cards at rest."
+      }
+    ],
+    "motion": [],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Triage card",
+      "kind": "card",
+      "refersTo": "triage-card",
+      "description": "Flat vault paper card for Email and References triage mosaics.",
+      "html": "<article class=\"ds-triage-card\"><div class=\"ds-triage-title\">Thread title</div><button type=\"button\" class=\"ds-next-step\">Open next step</button><div class=\"ds-chips\"><span class=\"ds-chip-request\">2 requests</span><span class=\"ds-chip-promise\">1 promise</span></div></article>",
+      "css": ".ds-triage-card { width: 253px; padding: 10px 12px 12px; border-radius: 8px; background: #fff; border: 1px solid #c5c5d5; font-family: system-ui, sans-serif; } .ds-triage-title { font-size: 13px; font-weight: 600; line-height: 1.35; margin-bottom: 6px; cursor: pointer; } .ds-triage-title:hover { color: #fd7452; } .ds-next-step { display: block; width: 100%; text-align: left; background: none; border: none; padding: 0; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: #001360; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; } .ds-next-step:hover { color: #a9371b; } .ds-next-step:focus-visible { outline: 2px solid #001360; outline-offset: 2px; } .ds-chips { display: flex; flex-wrap: wrap; gap: 6px; } .ds-chip-request, .ds-chip-promise { font-size: 11px; font-weight: 600; padding: 4px 7px; border-radius: 4px; } .ds-chip-request { color: #7a3532; background: color-mix(in srgb, #fd7452 18%, transparent); } .ds-chip-promise { color: #001360; background: color-mix(in srgb, #001360 12%, transparent); }"
+    },
+    {
+      "name": "Request chip",
+      "kind": "chip",
+      "refersTo": "chip-request",
+      "description": "Open request count; omit when count is zero.",
+      "html": "<span class=\"ds-chip-request\">2 requests</span>",
+      "css": ".ds-chip-request { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; line-height: 1; padding: 4px 7px; border-radius: 4px; color: #7a3532; background: color-mix(in srgb, #fd7452 18%, transparent); font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Promise chip",
+      "kind": "chip",
+      "refersTo": "chip-promise",
+      "description": "Open promise count; omit when count is zero.",
+      "html": "<span class=\"ds-chip-promise\">1 promise</span>",
+      "css": ".ds-chip-promise { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; line-height: 1; padding: 4px 7px; border-radius: 4px; color: #001360; background: color-mix(in srgb, #001360 12%, transparent); font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Act-now lane",
+      "kind": "custom",
+      "refersTo": "triage-card",
+      "description": "Paper lane with 4% Terracotta wash and 3px left accent.",
+      "html": "<section class=\"ds-lane-acts\"><header class=\"ds-lane-header\"><span class=\"ds-lane-title\">Act now</span><span class=\"ds-lane-count\">11</span></header><p class=\"ds-lane-subtitle\">Reply owed</p></section>",
+      "css": ".ds-lane-acts { padding: 10px 12px 12px; border-radius: 8px; border-left: 3px solid #fd7452; background: color-mix(in srgb, #fd7452 4%, transparent); font-family: system-ui, sans-serif; } .ds-lane-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; } .ds-lane-title { font-size: 13px; font-weight: 600; color: #fd7452; } .ds-lane-count { font-size: 12px; color: #6b6e66; font-variant-numeric: tabular-nums; } .ds-lane-subtitle { margin: 0 0 8px; font-size: 11px; color: #6b6e66; }"
+    },
+    {
+      "name": "Step current",
+      "kind": "custom",
+      "refersTo": "triage-card",
+      "description": "References triage current step square in Terracotta.",
+      "html": "<button type=\"button\" class=\"ds-step-current\" aria-label=\"Current step\">3</button>",
+      "css": ".ds-step-current { width: 28px; height: 28px; border-radius: 4px; border: 1px solid #a9371b; background: #fd7452; color: #1a1a1a; font-size: 12px; font-weight: 600; cursor: pointer; } .ds-step-current:focus-visible { outline: 3px solid #1a1a1a; outline-offset: 1px; }"
+    },
+    {
+      "name": "Step done",
+      "kind": "custom",
+      "refersTo": "triage-card",
+      "description": "References triage done step square in Sage.",
+      "html": "<button type=\"button\" class=\"ds-step-done\" aria-label=\"Done step\">✓</button>",
+      "css": ".ds-step-done { width: 28px; height: 28px; border-radius: 4px; border: 1px solid #5a9470; background: #79b58d; color: #1a1a1a; font-size: 12px; font-weight: 600; cursor: pointer; } .ds-step-done:focus-visible { outline: 3px solid #1a1a1a; outline-offset: 1px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Paper Ledger",
+    "overview": "This fork keeps Project Manager as a vault desk tool: dense, built for scanning first, and warm enough for academic admin work without becoming a productivity dashboard. Triage and Sprint views borrow Obsidian theme tokens for paper and ink, then spend a small accent budget on lane meaning.\n\nThe anti-reference is neon productivity apps. Saturated washes, floating card shadows, and tutorial legends on every visit are out of scope. Colour marks debt or progress. It does not decorate empty space.",
+    "keyCharacteristics": [
+      "Operate density over decoration",
+      "Obsidian theme face and theme tokens first",
+      "4% lane tints; flat cards at rest",
+      "Accents name state (reply owed, promised, done, waiting), not brand theatre",
+      "Soft hover lift; structural shadows on modals only"
+    ],
+    "rules": [
+      {
+        "name": "The Four Percent Rule",
+        "body": "Lane washes mix the lane accent at 4% into transparent (or the theme paper token). Stronger pastel bands are a regression.",
+        "section": "colors"
+      },
+      {
+        "name": "The Accent Budget Rule",
+        "body": "Accent colour marks meaning on ≤10% of a triage viewport: lane titles, chips, current steps. The rest stays theme neutral.",
+        "section": "colors"
+      },
+      {
+        "name": "The Theme Face Rule",
+        "body": "Prefer the theme face; never invent a display font for plugin chrome.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Card Rule",
+        "body": "Triage and matrix cards ship without resting box-shadow. Modals may use ambient shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use Obsidian theme and text tokens for paper, borders, and body ink.",
+      "Do keep lane washes at 4% and cards flat at rest.",
+      "Do spend Terracotta and Ink Navy on debt meaning; Sage on done.",
+      "Do make the next actionable child the primary control on Email triage cards.",
+      "Do hide chips with a zero count."
+    ],
+    "donts": [
+      "Don't hardcode #ffffff card fills or decorative resting shadows on triage cards.",
+      "Don't raise lane washes into pastel dashboard bands.",
+      "Don't invent a display font for plugin chrome.",
+      "Don't put a permanent Legend strip on Email triage once chips are self-describing.",
+      "Don't restain Sprint quadrant paper with a second wash system."
+    ]
+  }
+}

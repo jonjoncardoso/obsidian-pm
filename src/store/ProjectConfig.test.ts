@@ -43,6 +43,7 @@ describe('resolveProjectConfig', () => {
     expect(resolved.kanbanShowSubtasks).toBe(DEFAULT_SETTINGS.kanbanShowSubtasks)
     expect(resolved.kanbanShowDescriptionPreview).toBe(DEFAULT_SETTINGS.kanbanShowDescriptionPreview)
     expect(resolved.attentionTriage).toBe(false)
+    expect(resolved.emailTriage).toBe(false)
   })
 
   it('treats empty override lists as inherit', () => {
@@ -84,6 +85,7 @@ describe('resolveProjectConfig', () => {
     expect(resolved.statuses).toEqual(DEFAULT_STATUSES)
     expect(resolved.kanbanShowDescriptionPreview).toBe(DEFAULT_SETTINGS.kanbanShowDescriptionPreview)
     expect(resolved.attentionTriage).toBe(false)
+    expect(resolved.emailTriage).toBe(false)
   })
 
   it('borrows the global config for in-use statuses the project does not define', () => {

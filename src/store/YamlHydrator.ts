@@ -203,6 +203,7 @@ function hydrateProjectConfig(raw: unknown): ProjectConfig | undefined {
     config.kanbanShowDescriptionPreview = r.kanbanShowDescriptionPreview
   }
   if (typeof r.attentionTriage === 'boolean') config.attentionTriage = r.attentionTriage
+  if (typeof r.emailTriage === 'boolean') config.emailTriage = r.emailTriage
   return Object.keys(config).length ? config : undefined
 }
 

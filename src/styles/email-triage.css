@@ -1,0 +1,299 @@
+.pm-content--email-triage {
+  overflow: hidden;
+}
+
+.pm-email-triage-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  container-type: inline-size;
+  container-name: email-triage;
+}
+
+.pm-email-triage-board {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-sizing: border-box;
+}
+
+.pm-email-triage-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* Wide pane: Act now left; Deliver / Waiting / Parked stack in the side column. */
+@container email-triage (min-width: 900px) {
+  .pm-email-triage-board {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 14px 16px;
+  }
+
+  .pm-email-triage-lane--acts-now {
+    min-width: 0;
+  }
+
+  .pm-email-triage-side {
+    min-width: 0;
+  }
+}
+
+.pm-email-triage-lane {
+  --pm-email-lane-accent: var(--text-muted);
+  --pm-email-lane-tint: transparent;
+  padding: 10px 12px 8px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--background-modifier-border);
+  border-left: 1px solid var(--pm-email-lane-accent);
+  background: var(--pm-email-lane-tint);
+  box-sizing: border-box;
+}
+
+.pm-email-triage-lane--acts-now {
+  --pm-email-lane-accent: #fd7452;
+  --pm-email-lane-tint: color-mix(in srgb, #fd7452 4%, var(--background-primary));
+}
+
+.pm-email-triage-lane--deliver {
+  --pm-email-lane-accent: #001360;
+  --pm-email-lane-tint: color-mix(in srgb, #001360 4%, var(--background-primary));
+}
+
+.pm-email-triage-lane--waiting {
+  --pm-email-lane-accent: #a67c3d;
+  --pm-email-lane-tint: color-mix(in srgb, #a67c3d 4%, var(--background-primary));
+}
+
+.pm-email-triage-lane--parked {
+  --pm-email-lane-accent: #6b6e66;
+  --pm-email-lane-tint: color-mix(in srgb, #6b6e66 3%, var(--background-primary));
+}
+
+.pm-email-triage-lane-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.pm-email-triage-lane-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--pm-email-lane-accent);
+}
+
+.pm-email-triage-lane-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pm-email-triage-lane-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.pm-email-triage-lane-toggle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  border-radius: 2px;
+}
+
+.pm-email-triage-lane-toggle:hover .pm-email-triage-lane-title {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pm-email-triage-lane-toggle:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+.pm-email-triage-lane-toggle-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pm-email-triage-lane-toggle-hint {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-weight: 500;
+}
+
+.pm-email-triage-lane-rows {
+  display: flex;
+  flex-direction: column;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+}
+
+.pm-email-triage-empty {
+  font-size: 12px;
+  color: var(--text-faint);
+  padding: 10px 12px;
+}
+
+.pm-email-triage-loading {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 12px 16px;
+}
+
+.pm-email-triage-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 4px 12px;
+  align-items: start;
+  padding: 8px 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  box-sizing: border-box;
+}
+
+.pm-email-triage-row:first-child {
+  border-top: none;
+}
+
+.pm-email-triage-row:hover {
+  background: color-mix(in srgb, var(--pm-email-lane-accent) 5%, var(--background-primary));
+}
+
+.pm-email-triage-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pm-email-triage-row-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-normal);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.pm-email-triage-row-title:hover {
+  color: var(--pm-email-lane-accent);
+}
+
+.pm-email-triage-row-title:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+.pm-email-triage-row-next {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pm-email-triage-row-next--primary {
+  color: #001360;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 2px;
+  text-decoration: none;
+}
+
+.pm-email-triage-row-next--primary:hover {
+  color: #a9371b;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pm-email-triage-row-next--primary:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+.pm-email-triage-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+  padding-top: 2px;
+}
+
+.pm-email-triage-chips:empty {
+  display: none;
+}
+
+.pm-email-triage-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pm-email-triage-chip--request {
+  color: #7a3532;
+  background: color-mix(in srgb, #fd7452 18%, transparent);
+}
+
+.pm-email-triage-chip--promise {
+  color: #001360;
+  background: color-mix(in srgb, #001360 12%, transparent);
+}
+
+.pm-email-triage-row-due {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-normal);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding-top: 2px;
+  min-width: 5.5rem;
+  text-align: right;
+}
+
+.pm-email-triage-row-due--soon {
+  color: var(--color-orange);
+}
+
+.pm-email-triage-row-due--overdue {
+  color: var(--text-error);
+}
+
+.pm-email-triage-row-due--empty {
+  color: var(--text-faint);
+  font-weight: 400;
+}

@@ -43,7 +43,8 @@ export function resolveProjectConfig(
     lineBorders: config?.lineBorders ?? settings.lineBorders,
     kanbanShowSubtasks: config?.kanbanShowSubtasks ?? settings.kanbanShowSubtasks,
     kanbanShowDescriptionPreview: config?.kanbanShowDescriptionPreview ?? settings.kanbanShowDescriptionPreview,
-    attentionTriage: config?.attentionTriage === true
+    attentionTriage: config?.attentionTriage === true,
+    emailTriage: config?.emailTriage === true
   }
 }
 

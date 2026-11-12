@@ -147,8 +147,10 @@ export interface ProjectConfig {
   lineBorders?: LineBorders
   kanbanShowSubtasks?: boolean
   kanbanShowDescriptionPreview?: boolean
-  /** When true, the project toolbar offers the Triage view. */
+  /** When true, the project toolbar offers the Triage view (letter pipelines). */
   attentionTriage?: boolean
+  /** When true, the project toolbar offers the Triage view (mail request/promise debt). */
+  emailTriage?: boolean
 }
 
 /**
@@ -169,6 +171,7 @@ export interface ResolvedProjectConfig {
   kanbanShowSubtasks: boolean
   kanbanShowDescriptionPreview: boolean
   attentionTriage: boolean
+  emailTriage: boolean
 }
 
 export interface PriorityConfig {

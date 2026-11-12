@@ -391,6 +391,10 @@ export class ProjectEditView extends ItemView {
       { value: true, label: 'On' },
       { value: false, label: 'Off' }
     ])
+    row('Email Triage view', 'emailTriage', [
+      { value: true, label: 'On' },
+      { value: false, label: 'Off' }
+    ])
   }
 
   /**

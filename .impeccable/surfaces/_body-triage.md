@@ -14,7 +14,7 @@ OWN-WORLD: Incumbent Project Manager chrome (toolbar, chips, secondary surfaces)
 
 STORY: Open Triage on an opted-in project. Scan lane headers, then card strips and the fixed legend. Open a card to edit the parent task.
 
-FIRST VIEWPORT: Lanes stacked full width (Jon acts now, Waiting on student, Waiting on portal, Parked). Cards show title, next action, six step squares, hours strip, due. Legend pinned at the bottom.
+FIRST VIEWPORT: Lanes stacked full width (Act now, Waiting on student, Waiting on portal, Parked). Cards show title, next action, six step squares, hours strip, due. Legend pinned at the bottom.
 
 FORM: Surface seed `aca25f18` dealt structure Attention triage lanes. Decision comps with live roster names were removed from this public tree; keep design notes here only.
 
