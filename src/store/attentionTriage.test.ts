@@ -214,7 +214,7 @@ describe('buildHoursStrip', () => {
 })
 
 describe('buildTriageCards', () => {
-  it('hides fully complete parents', () => {
+  it('puts finished student cards in the Completed lane', () => {
     const doneParent = makeTask({
       id: 'done',
       title: 'Done student',
@@ -227,7 +227,22 @@ describe('buildTriageCards', () => {
       subtasks: [step('d', '4. Draft', '04-draft-letter', 'todo')]
     })
     const cards = buildTriageCards([doneParent, open], statuses, '2026-11-11')
-    expect(cards.map((c) => c.parent.id)).toEqual(['open'])
+    const done = cards.find((c) => c.parent.id === 'done')
+    expect(done?.lane).toBe('completed')
+    expect(done?.nextAction).toBe('Done')
+    expect(done?.due).toBe('')
+    expect(cards.find((c) => c.parent.id === 'open')?.lane).not.toBe('completed')
+  })
+
+  it('leaves finished notes and cancelled cards off the board', () => {
+    const note = makeTask({ id: 'note', title: 'Tooling note', status: 'done' })
+    const gone = makeTask({
+      id: 'gone',
+      title: 'Cancelled student',
+      status: 'cancelled',
+      subtasks: [step('g', '1. Reply', '01-reply-first-ask', 'done')]
+    })
+    expect(buildTriageCards([note, gone], statuses, '2026-11-11')).toEqual([])
   })
 })
 

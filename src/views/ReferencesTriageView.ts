@@ -29,6 +29,7 @@ function formatTriageDate(iso: string): string {
 
 export class ReferencesTriageView implements SubView {
   private personKey: (raw: string) => string = displayName
+  private completedOpen = false
 
   constructor(
     private container: HTMLElement,
@@ -67,8 +68,37 @@ export class ReferencesTriageView implements SubView {
     for (const lane of TRIAGE_LANES) {
       const laneEl = board.createDiv(`pm-triage-lane pm-triage-lane--${lane.id}`)
       const header = laneEl.createDiv('pm-triage-lane-header')
+      const collapsible = lane.id === 'completed'
+      if (collapsible) {
+        const icon = header.createSpan('pm-triage-lane-toggle-icon')
+        setIcon(icon, this.completedOpen ? 'chevron-down' : 'chevron-right')
+      }
       header.createSpan({ text: lane.label, cls: 'pm-triage-lane-title' })
       header.createSpan({ text: String(groups[lane.id].length), cls: 'pm-triage-lane-count' })
+      if (collapsible) {
+        header.addClass('pm-triage-lane-header--toggle')
+        header.setAttrs({
+          role: 'button',
+          tabindex: '0',
+          'aria-expanded': String(this.completedOpen),
+          'aria-label': `${lane.label}, ${groups[lane.id].length} students, ${this.completedOpen ? 'shown' : 'hidden'}`
+        })
+        const toggle = () => {
+          this.completedOpen = !this.completedOpen
+          this.render()
+        }
+        header.addEventListener('click', toggle)
+        header.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            toggle()
+          }
+        })
+        if (!this.completedOpen) {
+          laneEl.addClass('pm-triage-lane--collapsed')
+          continue
+        }
+      }
       const row = laneEl.createDiv('pm-triage-lane-cards')
       if (!groups[lane.id].length) {
         row.createDiv({ text: 'None', cls: 'pm-triage-empty' })
@@ -84,6 +114,7 @@ export class ReferencesTriageView implements SubView {
 
   private renderCard(parent: HTMLElement, card: TriageCard): void {
     const el = parent.createDiv('pm-triage-card')
+    if (card.lane === 'completed') el.addClass('pm-triage-card--completed')
     el.setAttrs({ role: 'button', tabindex: '0' })
 
     el.createDiv({ text: card.parent.title, cls: 'pm-triage-card-title' })

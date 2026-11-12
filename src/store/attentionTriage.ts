@@ -2,7 +2,7 @@ import type { StatusConfig, Task } from '../types'
 import { isTerminalStatus } from '../utils'
 import { subtreeLoggedHours, subtreeTimeEstimate } from './TaskTreeOps'
 
-export type TriageLaneId = 'acts-now' | 'waiting-student' | 'waiting-portal' | 'parked'
+export type TriageLaneId = 'acts-now' | 'waiting-student' | 'waiting-portal' | 'parked' | 'completed'
 
 export type StepFill = 'empty' | 'current' | 'done' | 'waiting' | 'blocked'
 
@@ -44,7 +44,8 @@ export const TRIAGE_LANES: { id: TriageLaneId; label: string }[] = [
   { id: 'acts-now', label: 'Act now' },
   { id: 'waiting-student', label: 'Waiting on student' },
   { id: 'waiting-portal', label: 'Waiting on portal' },
-  { id: 'parked', label: 'Parked' }
+  { id: 'parked', label: 'Parked' },
+  { id: 'completed', label: 'Completed' }
 ]
 
 const STEP_ID_LINE = /^template_step_id:\s*(\S+)\s*$/m
@@ -359,6 +360,11 @@ export function assignLane(
   return 'acts-now'
 }
 
+/** A student card has at least one child placed in a numbered pipeline step. */
+export function hasPipelineSteps(parent: Task): boolean {
+  return parent.subtasks.some((child) => resolveStepPlacement(child) !== null)
+}
+
 function parentComplete(parent: Task, steps: TriageStepSquare[], statuses: StatusConfig[]): boolean {
   if (isTerminalStatus(parent.status, statuses) && parent.status !== 'cancelled') {
     if (!steps.length) return true
@@ -373,7 +379,8 @@ function parentComplete(parent: Task, steps: TriageStepSquare[], statuses: Statu
 }
 
 /**
- * Root parents for triage: top-level tasks that are not cancelled and not fully complete.
+ * Root parents for triage: top-level tasks that are not cancelled.
+ * Finished student cards go to the Completed lane; finished cards without pipeline steps stay off the board.
  */
 export function buildTriageCards(roots: Task[], statuses: StatusConfig[], today: string): TriageCard[] {
   const cards: TriageCard[] = []
@@ -381,11 +388,12 @@ export function buildTriageCards(roots: Task[], statuses: StatusConfig[], today:
     if (parent.type === 'milestone') continue
     if (parent.status === 'cancelled') continue
     const steps = buildStepSquares(parent, statuses)
-    if (parentComplete(parent, steps, statuses)) continue
-    const currentStepIndex = nextIncompleteIndex(steps, statuses)
+    const complete = parentComplete(parent, steps, statuses)
+    if (complete && !hasPipelineSteps(parent)) continue
+    const currentStepIndex = complete ? -1 : nextIncompleteIndex(steps, statuses)
     const nextStep = currentStepIndex >= 0 ? steps[currentStepIndex] : null
-    const nextTask = nextIncompleteTask(nextStep, statuses)
-    const lane = assignLane(parent, steps, statuses, today)
+    const nextTask = complete ? null : nextIncompleteTask(nextStep, statuses)
+    const lane: TriageLaneId = complete ? 'completed' : assignLane(parent, steps, statuses, today)
     settleCurrent(steps, currentStepIndex)
     cards.push({
       parent,
@@ -393,9 +401,9 @@ export function buildTriageCards(roots: Task[], statuses: StatusConfig[], today:
       steps,
       hours: buildHoursStrip(parent),
       currentStepIndex,
-      nextAction: nextTask?.title ?? parent.title,
+      nextAction: complete ? 'Done' : nextTask?.title ?? parent.title,
       nextTask,
-      due: nextDeadline(parent, steps, statuses)
+      due: complete ? '' : nextDeadline(parent, steps, statuses)
     })
   }
   return cards
@@ -406,7 +414,8 @@ export function groupByLane(cards: TriageCard[]): Record<TriageLaneId, TriageCar
     'acts-now': [],
     'waiting-student': [],
     'waiting-portal': [],
-    parked: []
+    parked: [],
+    completed: []
   }
   for (const card of cards) groups[card.lane].push(card)
   for (const lane of TRIAGE_LANES) {

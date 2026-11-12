@@ -51,12 +51,47 @@
   --pm-triage-lane-tint: color-mix(in srgb, #6b6e66 4%, transparent);
 }
 
+.pm-triage-lane--completed {
+  --pm-triage-lane-accent: #79b58d;
+  --pm-triage-lane-tint: color-mix(in srgb, #79b58d 4%, transparent);
+}
+
 .pm-triage-lane-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.pm-triage-lane-header--toggle {
+  justify-content: flex-start;
+  align-items: center;
+  cursor: pointer;
+}
+
+.pm-triage-lane-header--toggle .pm-triage-lane-count {
+  margin-left: auto;
+}
+
+.pm-triage-lane-header--toggle:focus-visible {
+  outline: 2px solid var(--pm-triage-lane-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-s);
+}
+
+.pm-triage-lane--collapsed .pm-triage-lane-header {
+  margin-bottom: 0;
+}
+
+.pm-triage-lane-toggle-icon {
+  display: inline-flex;
+  color: var(--pm-triage-lane-accent);
+}
+
+.pm-triage-lane-toggle-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 .pm-triage-lane-title {
