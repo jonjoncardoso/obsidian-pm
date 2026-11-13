@@ -28,7 +28,14 @@ export function renderTaskBar(g: SVGGElement, task: Task, row: number, _depth: n
   }
 
   const statusConfig = getStatusConfig(ctx.statuses, task.status)
-  const color = statusConfig?.color ?? getComputedStyle(ctx.svgEl).getPropertyValue('--interactive-accent').trim()
+  // The Gantt bar uses a darker cancelled fill than the shared status config, because
+  // the default cancelled colour reads as near-identical to todo at this bar's opacity.
+  // Other views (Table, Kanban, filters) keep statusConfig.color unchanged.
+  const GANTT_CANCELLED_COLOR = '#6b5a52'
+  const color =
+    task.status === 'cancelled'
+      ? GANTT_CANCELLED_COLOR
+      : (statusConfig?.color ?? getComputedStyle(ctx.svgEl).getPropertyValue('--interactive-accent').trim())
   const rowY = HEADER_HEIGHT + row * ROW_HEIGHT
   const y = rowY + BAR_PADDING
   const height = ROW_HEIGHT - BAR_PADDING * 2
