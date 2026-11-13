@@ -266,7 +266,7 @@ export const DEFAULT_STATUSES: StatusConfig[] = [
   { id: 'blocked', label: 'Blocked', color: '#c47070', icon: '', complete: false },
   { id: 'review', label: 'In Review', color: '#b8a06b', icon: '', complete: false },
   { id: 'done', label: 'Done', color: '#79b58d', icon: '', complete: true },
-  { id: 'cancelled', label: 'Cancelled', color: '#767491', icon: '', complete: true }
+  { id: 'cancelled', label: 'Cancelled', color: '#9b7a72', icon: '', complete: true }
 ]
 
 export const DEFAULT_PRIORITIES: PriorityConfig[] = [
